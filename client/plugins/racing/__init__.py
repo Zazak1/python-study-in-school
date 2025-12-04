@@ -1,5 +1,6 @@
 """
-赛车竞速游戏模块
-使用 Panda3D/物理引擎在服务器做权威物理
+赛车游戏插件
 """
+from .game import RacingPlugin
 
+__all__ = ['RacingPlugin']

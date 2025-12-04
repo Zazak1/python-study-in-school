@@ -1,5 +1,6 @@
 """
-大富翁游戏模块
-规则脚本化，使用状态机定义卡牌/地块/骰子事件
+大富翁游戏插件
 """
+from .game import MonopolyPlugin
 
+__all__ = ['MonopolyPlugin']

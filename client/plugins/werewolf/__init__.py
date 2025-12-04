@@ -1,5 +1,6 @@
 """
-狼人杀游戏模块
-状态同步与计时器，支持语音
+狼人杀游戏插件
 """
+from .game import WerewolfPlugin
 
+__all__ = ['WerewolfPlugin']
