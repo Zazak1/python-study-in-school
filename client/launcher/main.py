@@ -54,16 +54,8 @@ def main():
         logger.info("运行: pip install -r requirements.txt")
         sys.exit(1)
     
-    # 创建应用
-    app = QApplication(sys.argv)
-    app.setApplicationName("Aether Party")
-    app.setApplicationVersion("0.1.0")
-    
-    # TODO: 创建主窗口
-    logger.info("客户端 UI 开发中...")
-    logger.info("可用的游戏插件:")
-    
     # 列出可用插件
+    logger.info("可用的游戏插件:")
     from client.plugins.gomoku.game import GomokuPlugin
     from client.plugins.shooter2d.game import Shooter2DPlugin
     
@@ -75,12 +67,11 @@ def main():
         logger.info(f"    玩家数: {info['min_players']}-{info['max_players']}")
     
     logger.info("")
-    logger.info("项目结构已创建完成！")
-    logger.info("下一步：实现大厅 UI 和游戏界面")
+    logger.info("启动图形界面...")
     
-    # 暂时不启动 UI 循环
-    # sys.exit(app.exec())
-    return 0
+    # 启动 UI
+    from client.shell import run_app
+    return run_app()
 
 
 if __name__ == "__main__":
