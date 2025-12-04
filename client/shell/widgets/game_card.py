@@ -1,5 +1,5 @@
 """
-游戏卡片组件
+游戏卡片组件 - 现代化浅色风格
 """
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
@@ -21,40 +21,40 @@ class GameCard(QWidget):
             'icon': '⚫',
             'desc': '经典对弈，策略博弈',
             'players': '2人',
-            'color': '#10B981',
-            'gradient': ('rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.05)')
+            'color': '#10B981', # Green
+            'bg': '#ECFDF5'     # Light Green
         },
         'shooter2d': {
             'name': '2D 射击',
             'icon': '🔫',
             'desc': '紧张刺激，快节奏对战',
             'players': '2-8人',
-            'color': '#EF4444',
-            'gradient': ('rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0.05)')
+            'color': '#EF4444', # Red
+            'bg': '#FEF2F2'     # Light Red
         },
         'werewolf': {
             'name': '狼人杀',
             'icon': '🐺',
             'desc': '语音推理，烧脑社交',
             'players': '6-12人',
-            'color': '#8B5CF6',
-            'gradient': ('rgba(139, 92, 246, 0.2)', 'rgba(139, 92, 246, 0.05)')
+            'color': '#8B5CF6', # Purple
+            'bg': '#F5F3FF'     # Light Purple
         },
         'monopoly': {
             'name': '大富翁',
             'icon': '🎲',
             'desc': '商业帝国，策略经营',
             'players': '2-4人',
-            'color': '#F59E0B',
-            'gradient': ('rgba(245, 158, 11, 0.2)', 'rgba(245, 158, 11, 0.05)')
+            'color': '#F59E0B', # Amber
+            'bg': '#FFFBEB'     # Light Amber
         },
         'racing': {
             'name': '赛车竞速',
             'icon': '🏎️',
             'desc': '速度激情，极限漂移',
             'players': '2-6人',
-            'color': '#00D4FF',
-            'gradient': ('rgba(0, 212, 255, 0.2)', 'rgba(0, 212, 255, 0.05)')
+            'color': '#06B6D4', # Cyan
+            'bg': '#ECFEFF'     # Light Cyan
         }
     }
     
@@ -67,11 +67,11 @@ class GameCard(QWidget):
     def setup_ui(self):
         """设置 UI"""
         info = self.game_info
-        color = info.get('color', '#00D4FF')
-        grad1, grad2 = info.get('gradient', ('rgba(0,0,0,0.2)', 'rgba(0,0,0,0.05)'))
+        theme_color = info.get('color', '#2563EB')
+        bg_color = info.get('bg', '#F3F4F6')
         
-        self.setMinimumSize(180, 200)
-        self.setMaximumSize(220, 240)
+        self.setMinimumSize(160, 180)
+        self.setMaximumSize(200, 220)
         self.setCursor(Qt.PointingHandCursor)
         
         # 主布局
@@ -83,45 +83,60 @@ class GameCard(QWidget):
         self.card.setObjectName("gameCard")
         self.card.setStyleSheet(f"""
             #gameCard {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 {grad1}, stop:1 {grad2});
-                border: 2px solid #2d3748;
+                background-color: #FFFFFF;
+                border: 1px solid #E5E7EB;
                 border-radius: 16px;
             }}
             #gameCard:hover {{
-                border-color: {color};
+                border-color: {theme_color};
+                background-color: {bg_color};
             }}
         """)
         
-        # 添加发光效果
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(20)
-        shadow.setXOffset(0)
-        shadow.setYOffset(5)
-        shadow.setColor(QColor(color))
-        shadow.setColor(QColor(0, 0, 0, 80))
-        self.card.setGraphicsEffect(shadow)
+        # 默认阴影
+        self.shadow = QGraphicsDropShadowEffect()
+        self.shadow.setBlurRadius(20)
+        self.shadow.setXOffset(0)
+        self.shadow.setYOffset(4)
+        self.shadow.setColor(QColor(0, 0, 0, 15)) # 浅色阴影
+        self.card.setGraphicsEffect(self.shadow)
         
         card_layout = QVBoxLayout(self.card)
-        card_layout.setContentsMargins(20, 25, 20, 20)
-        card_layout.setSpacing(12)
+        card_layout.setContentsMargins(16, 20, 16, 16)
+        card_layout.setSpacing(8)
         
-        # 游戏图标
-        icon_label = QLabel(info.get('icon', '🎮'))
-        icon_label.setAlignment(Qt.AlignCenter)
-        icon_label.setStyleSheet(f"""
-            font-size: 48px;
-            background: transparent;
+        # 游戏图标背景圆
+        icon_container = QLabel()
+        icon_container.setFixedSize(64, 64)
+        icon_container.setAlignment(Qt.AlignCenter)
+        # 使用半透明背景
+        rgba_color = self._hex_to_rgba(theme_color, 0.1)
+        icon_container.setStyleSheet(f"""
+            background-color: {rgba_color};
+            border-radius: 32px;
+            margin-bottom: 8px;
         """)
-        card_layout.addWidget(icon_label)
+        
+        # 图标文字
+        icon_label = QLabel(info.get('icon', '🎮'))
+        icon_label.setParent(icon_container)
+        icon_label.setStyleSheet("font-size: 32px; background: transparent;")
+        icon_label.move(16, 12) # 简单居中微调
+        
+        # 添加到布局居中
+        h_box = QHBoxLayout()
+        h_box.addStretch()
+        h_box.addWidget(icon_container)
+        h_box.addStretch()
+        card_layout.addLayout(h_box)
         
         # 游戏名称
         name_label = QLabel(info.get('name', '未知游戏'))
         name_label.setAlignment(Qt.AlignCenter)
         name_label.setStyleSheet(f"""
-            font-size: 18px;
-            font-weight: bold;
-            color: {color};
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
             background: transparent;
         """)
         card_layout.addWidget(name_label)
@@ -132,24 +147,31 @@ class GameCard(QWidget):
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("""
             font-size: 12px;
-            color: #94A3B8;
+            color: #6B7280;
             background: transparent;
         """)
         card_layout.addWidget(desc_label)
         
-        # 玩家数
+        # 玩家数标签
         players_label = QLabel(f"👥 {info.get('players', '?')}")
         players_label.setAlignment(Qt.AlignCenter)
-        players_label.setStyleSheet("""
+        players_label.setStyleSheet(f"""
             font-size: 11px;
-            color: #64748B;
+            color: {theme_color};
+            font-weight: 600;
             background: transparent;
+            padding-top: 4px;
         """)
         card_layout.addWidget(players_label)
         
         card_layout.addStretch()
         
         layout.addWidget(self.card)
+    
+    def _hex_to_rgba(self, hex_color, alpha):
+        """辅助函数：Hex转RGBA"""
+        c = QColor(hex_color)
+        return f"rgba({c.red()}, {c.green()}, {c.blue()}, {alpha})"
     
     def mousePressEvent(self, event):
         """鼠标点击"""
@@ -159,22 +181,16 @@ class GameCard(QWidget):
     
     def enterEvent(self, event):
         """鼠标进入"""
-        color = self.game_info.get('color', '#00D4FF')
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(30)
-        shadow.setXOffset(0)
-        shadow.setYOffset(8)
-        shadow.setColor(QColor(color))
-        self.card.setGraphicsEffect(shadow)
+        # 加深阴影
+        self.shadow.setBlurRadius(30)
+        self.shadow.setYOffset(8)
+        self.shadow.setColor(QColor(0, 0, 0, 30))
+        # 微微上浮效果通过 margin 实现稍微复杂，这里只做阴影变化
         super().enterEvent(event)
     
     def leaveEvent(self, event):
         """鼠标离开"""
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(20)
-        shadow.setXOffset(0)
-        shadow.setYOffset(5)
-        shadow.setColor(QColor(0, 0, 0, 80))
-        self.card.setGraphicsEffect(shadow)
+        self.shadow.setBlurRadius(20)
+        self.shadow.setYOffset(4)
+        self.shadow.setColor(QColor(0, 0, 0, 15))
         super().leaveEvent(event)
-

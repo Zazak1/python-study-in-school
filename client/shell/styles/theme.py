@@ -1,6 +1,6 @@
 """
-主题配置 - 游戏大厅风格
-采用赛博朋克 + 霓虹风格，深色背景配合亮色点缀
+主题配置 - 现代化浅色风格
+采用 Material Design 3 / Apple Design 风格，清爽、明亮、高可读性
 """
 from dataclasses import dataclass
 from typing import Dict
@@ -10,25 +10,24 @@ from typing import Dict
 class Theme:
     """主题配置"""
     # 主色调
-    primary: str           # 主要强调色
-    primary_light: str     # 主色亮版
-    primary_dark: str      # 主色暗版
+    primary: str           # 品牌主色 (科技蓝)
+    primary_light: str     # 主色亮版 (悬停)
+    primary_dark: str      # 主色暗版 (按下)
     
     # 次要色
-    secondary: str         # 次要强调色
-    accent: str            # 点缀色
+    secondary: str         # 次要色 (活力橙)
+    accent: str            # 点缀色 (紫色/粉色)
     
     # 背景色
-    bg_dark: str           # 最深背景
-    bg_medium: str         # 中等背景
-    bg_light: str          # 较亮背景
-    bg_card: str           # 卡片背景
+    bg_base: str           # 基础背景 (应用底色)
+    bg_surface: str        # 表面背景 (卡片/面板)
+    bg_surface_variant: str # 变体表面 (输入框/列表项)
     
     # 文字色
-    text_primary: str      # 主要文字
-    text_secondary: str    # 次要文字
-    text_muted: str        # 弱化文字
-    text_inverse: str      # 反色文字
+    text_primary: str      # 主要文字 (深灰/黑)
+    text_secondary: str    # 次要文字 (中灰)
+    text_tertiary: str     # 辅助文字 (浅灰)
+    text_inverse: str      # 反色文字 (白)
     
     # 状态色
     success: str           # 成功/在线
@@ -36,13 +35,16 @@ class Theme:
     error: str             # 错误/离线
     info: str              # 信息
     
-    # 边框
-    border: str            # 边框色
-    border_light: str      # 亮边框
+    # 边框与分割线
+    border: str            # 常规边框
+    border_focus: str      # 焦点边框
+    divider: str           # 分割线
     
     # 特效
-    glow: str              # 发光效果色
-    shadow: str            # 阴影色
+    shadow_sm: str         # 小阴影
+    shadow_md: str         # 中阴影
+    shadow_lg: str         # 大阴影
+    overlay: str           # 遮罩层
     
     # 字体
     font_family: str       # 主字体
@@ -56,94 +58,72 @@ class Theme:
             'primary_dark': self.primary_dark,
             'secondary': self.secondary,
             'accent': self.accent,
-            'bg_dark': self.bg_dark,
-            'bg_medium': self.bg_medium,
-            'bg_light': self.bg_light,
-            'bg_card': self.bg_card,
+            'bg_base': self.bg_base,
+            'bg_surface': self.bg_surface,
+            'bg_surface_variant': self.bg_surface_variant,
             'text_primary': self.text_primary,
             'text_secondary': self.text_secondary,
-            'text_muted': self.text_muted,
+            'text_tertiary': self.text_tertiary,
             'text_inverse': self.text_inverse,
             'success': self.success,
             'warning': self.warning,
             'error': self.error,
             'info': self.info,
             'border': self.border,
-            'border_light': self.border_light,
-            'glow': self.glow,
-            'shadow': self.shadow,
+            'border_focus': self.border_focus,
+            'divider': self.divider,
+            'shadow_sm': self.shadow_sm,
+            'shadow_md': self.shadow_md,
+            'shadow_lg': self.shadow_lg,
+            'overlay': self.overlay,
             'font_family': self.font_family,
             'font_family_mono': self.font_family_mono,
         }
 
 
-# 深色主题 - 赛博霓虹风格
-DARK_THEME = Theme(
-    # 主色：电光蓝
-    primary='#00D4FF',
-    primary_light='#5CE1FF',
-    primary_dark='#0099CC',
+# 现代化浅色主题
+LIGHT_MODERN_THEME = Theme(
+    # 主色：Inter Blue
+    primary='#2563EB',        # 鲜艳的蓝
+    primary_light='#3B82F6',  # 亮蓝
+    primary_dark='#1D4ED8',   # 深蓝
     
-    # 次要色：霓虹粉
-    secondary='#FF2E97',
-    accent='#FFE600',  # 金黄点缀
+    # 次要色
+    secondary='#F59E0B',      # 琥珀色
+    accent='#8B5CF6',         # 梦幻紫
     
-    # 背景：深邃黑蓝
-    bg_dark='#0A0E17',
-    bg_medium='#111827',
-    bg_light='#1F2937',
-    bg_card='#161E2E',
+    # 背景：灰白层次
+    bg_base='#F3F4F6',        # 极浅灰底色
+    bg_surface='#FFFFFF',     # 纯白卡片
+    bg_surface_variant='#F9FAFB', # 浅灰表面
     
-    # 文字
-    text_primary='#F0F4F8',
-    text_secondary='#94A3B8',
-    text_muted='#64748B',
-    text_inverse='#0A0E17',
+    # 文字：高对比度深灰
+    text_primary='#111827',   # 近乎黑
+    text_secondary='#4B5563', # 深灰
+    text_tertiary='#9CA3AF',  # 浅灰
+    text_inverse='#FFFFFF',   # 纯白
     
     # 状态色
-    success='#10B981',
-    warning='#F59E0B',
-    error='#EF4444',
-    info='#3B82F6',
+    success='#10B981',        # 翡翠绿
+    warning='#F59E0B',        # 琥珀黄
+    error='#EF4444',          # 玫瑰红
+    info='#3B82F6',           # 天空蓝
     
     # 边框
-    border='#2D3748',
-    border_light='#4A5568',
+    border='#E5E7EB',         # 浅灰边框
+    border_focus='#2563EB',   # 聚焦蓝边框
+    divider='#F3F4F6',        # 分割线
     
-    # 特效
-    glow='rgba(0, 212, 255, 0.4)',
-    shadow='rgba(0, 0, 0, 0.5)',
+    # 阴影 (CSS 格式 rgba)
+    shadow_sm='rgba(0, 0, 0, 0.05)',
+    shadow_md='rgba(0, 0, 0, 0.1)',
+    shadow_lg='rgba(0, 0, 0, 0.15)',
+    overlay='rgba(255, 255, 255, 0.8)',
     
-    # 字体 - 使用系统自带的现代字体
-    font_family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif',
-    font_family_mono='"SF Mono", "Fira Code", "Monaco", monospace',
+    # 字体 - 优先使用系统字体
+    font_family='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif',
+    font_family_mono='"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
 )
 
-
-# 可选：亮色主题
-LIGHT_THEME = Theme(
-    primary='#0066FF',
-    primary_light='#3399FF',
-    primary_dark='#0044CC',
-    secondary='#FF3366',
-    accent='#FFAA00',
-    bg_dark='#F8FAFC',
-    bg_medium='#F1F5F9',
-    bg_light='#E2E8F0',
-    bg_card='#FFFFFF',
-    text_primary='#1E293B',
-    text_secondary='#475569',
-    text_muted='#94A3B8',
-    text_inverse='#FFFFFF',
-    success='#10B981',
-    warning='#F59E0B',
-    error='#EF4444',
-    info='#3B82F6',
-    border='#E2E8F0',
-    border_light='#CBD5E1',
-    glow='rgba(0, 102, 255, 0.3)',
-    shadow='rgba(0, 0, 0, 0.1)',
-    font_family='"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif',
-    font_family_mono='"SF Mono", "Fira Code", "Monaco", monospace',
-)
-
+# 默认主题指向新主题
+DARK_THEME = LIGHT_MODERN_THEME 

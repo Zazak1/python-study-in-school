@@ -1,5 +1,5 @@
 """
-登录界面组件
+登录界面组件 - 现代化浅色风格
 """
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
@@ -20,7 +20,6 @@ class LoginWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
-        self.setup_animations()
     
     def setup_ui(self):
         """设置 UI"""
@@ -29,52 +28,48 @@ class LoginWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignCenter)
         
+        # 背景装饰 (可选)
+        # ...
+        
         # 中心卡片容器
         card = QFrame()
         card.setObjectName("loginCard")
-        card.setStyleSheet("""
-            #loginCard {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #1a2332, stop:1 #0f1520);
-                border: 1px solid #2d3748;
-                border-radius: 20px;
-                min-width: 400px;
-                max-width: 420px;
-            }
-        """)
+        # QSS 中已定义 #loginCard 样式 (白色背景, 圆角, 边框)
         
-        # 添加阴影效果
+        # 添加柔和阴影
         shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(40)
+        shadow.setBlurRadius(60)
         shadow.setXOffset(0)
         shadow.setYOffset(10)
-        shadow.setColor(QColor(0, 212, 255, 60))
+        shadow.setColor(QColor(0, 0, 0, 20)) # 浅色阴影
         card.setGraphicsEffect(shadow)
         
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(40, 50, 40, 40)
-        card_layout.setSpacing(20)
+        card_layout.setContentsMargins(48, 60, 48, 48)
+        card_layout.setSpacing(24)
         
         # Logo 区域
         logo_layout = QVBoxLayout()
-        logo_layout.setSpacing(8)
+        logo_layout.setSpacing(12)
         
         # 游戏标题
-        title = QLabel("⚡ AETHER PARTY")
+        title = QLabel("Aether Party")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("""
+            font-family: "PingFang SC", sans-serif;
             font-size: 32px;
-            font-weight: bold;
-            color: #00D4FF;
-            letter-spacing: 3px;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -0.5px;
         """)
         
         subtitle = QLabel("跨平台好友对战大厅")
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet("""
             font-size: 14px;
-            color: #64748B;
+            color: #6B7280;
             letter-spacing: 1px;
+            font-weight: 500;
         """)
         
         logo_layout.addWidget(title)
@@ -82,56 +77,41 @@ class LoginWidget(QWidget):
         card_layout.addLayout(logo_layout)
         
         # 间隔
-        card_layout.addSpacing(30)
+        card_layout.addSpacing(20)
         
         # 用户名输入
         self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("👤  用户名 / 邮箱")
-        self.username_input.setMinimumHeight(50)
-        self.username_input.setStyleSheet(self._input_style())
+        self.username_input.setPlaceholderText("用户名 / 邮箱")
+        self.username_input.setMinimumHeight(48)
+        # 样式由全局 QSS 接管
         card_layout.addWidget(self.username_input)
         
         # 密码输入
         self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("🔒  密码")
+        self.password_input.setPlaceholderText("密码")
         self.password_input.setEchoMode(QLineEdit.Password)
-        self.password_input.setMinimumHeight(50)
-        self.password_input.setStyleSheet(self._input_style())
+        self.password_input.setMinimumHeight(48)
         card_layout.addWidget(self.password_input)
         
         # 记住我 & 忘记密码
         options_layout = QHBoxLayout()
         
         self.remember_check = QCheckBox("记住我")
-        self.remember_check.setStyleSheet("""
-            QCheckBox {
-                color: #94A3B8;
-                font-size: 13px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border-radius: 4px;
-                border: 2px solid #4A5568;
-                background: #1F2937;
-            }
-            QCheckBox::indicator:checked {
-                background: #00D4FF;
-                border-color: #00D4FF;
-            }
-        """)
+        # 样式由全局 QSS 接管
         
         forgot_btn = QPushButton("忘记密码?")
         forgot_btn.setCursor(Qt.PointingHandCursor)
+        forgot_btn.setProperty("class", "ghost") # 使用 ghost 类
         forgot_btn.setStyleSheet("""
             QPushButton {
-                background: transparent;
-                border: none;
-                color: #00D4FF;
+                color: #2563EB;
                 font-size: 13px;
+                padding: 0;
+                text-align: right;
             }
             QPushButton:hover {
-                color: #5CE1FF;
+                color: #1D4ED8;
+                background: none;
                 text-decoration: underline;
             }
         """)
@@ -142,48 +122,30 @@ class LoginWidget(QWidget):
         card_layout.addLayout(options_layout)
         
         # 间隔
-        card_layout.addSpacing(10)
+        card_layout.addSpacing(8)
         
         # 登录按钮
-        self.login_btn = QPushButton("🚀  进入游戏")
-        self.login_btn.setMinimumHeight(55)
+        self.login_btn = QPushButton("进入游戏")
+        self.login_btn.setMinimumHeight(50)
         self.login_btn.setCursor(Qt.PointingHandCursor)
-        self.login_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #00D4FF, stop:1 #0099CC);
-                color: #0A0E17;
-                border: none;
-                border-radius: 12px;
-                font-size: 16px;
-                font-weight: bold;
-                letter-spacing: 2px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #5CE1FF, stop:1 #00D4FF);
-            }
-            QPushButton:pressed {
-                background: #0099CC;
-            }
-        """)
+        self.login_btn.setProperty("class", "primary") # 使用 primary 类
         self.login_btn.clicked.connect(self._on_login)
         card_layout.addWidget(self.login_btn)
         
         # 分割线
         separator_layout = QHBoxLayout()
-        separator_layout.setSpacing(15)
+        separator_layout.setSpacing(16)
         
         line1 = QFrame()
         line1.setFrameShape(QFrame.HLine)
-        line1.setStyleSheet("background: #2d3748; max-height: 1px;")
+        line1.setStyleSheet("background: #E5E7EB; max-height: 1px; border: none;")
         
-        or_label = QLabel("或")
-        or_label.setStyleSheet("color: #64748B; font-size: 12px;")
+        or_label = QLabel("或是")
+        or_label.setStyleSheet("color: #9CA3AF; font-size: 12px;")
         
         line2 = QFrame()
         line2.setFrameShape(QFrame.HLine)
-        line2.setStyleSheet("background: #2d3748; max-height: 1px;")
+        line2.setStyleSheet("background: #E5E7EB; max-height: 1px; border: none;")
         
         separator_layout.addWidget(line1, 1)
         separator_layout.addWidget(or_label)
@@ -194,9 +156,9 @@ class LoginWidget(QWidget):
         quick_layout = QHBoxLayout()
         quick_layout.setSpacing(12)
         
-        guest_btn = self._create_quick_btn("👻 游客体验", "#6366F1")
-        qq_btn = self._create_quick_btn("QQ", "#12B7F5")
-        wechat_btn = self._create_quick_btn("微信", "#07C160")
+        guest_btn = self._create_quick_btn("游客", "#6366F1")
+        qq_btn = self._create_quick_btn("QQ", "#0EA5E9")
+        wechat_btn = self._create_quick_btn("微信", "#10B981")
         
         quick_layout.addWidget(guest_btn)
         quick_layout.addWidget(qq_btn)
@@ -204,26 +166,27 @@ class LoginWidget(QWidget):
         card_layout.addLayout(quick_layout)
         
         # 注册提示
-        card_layout.addSpacing(10)
+        card_layout.addSpacing(16)
         
         register_layout = QHBoxLayout()
         register_layout.setAlignment(Qt.AlignCenter)
         
         hint = QLabel("还没有账号?")
-        hint.setStyleSheet("color: #64748B; font-size: 13px;")
+        hint.setStyleSheet("color: #6B7280; font-size: 13px;")
         
         register_btn = QPushButton("立即注册")
         register_btn.setCursor(Qt.PointingHandCursor)
+        register_btn.setProperty("class", "ghost")
         register_btn.setStyleSheet("""
             QPushButton {
-                background: transparent;
-                border: none;
-                color: #FF2E97;
+                color: #2563EB;
+                font-weight: 600;
                 font-size: 13px;
-                font-weight: bold;
+                padding: 0 4px;
             }
             QPushButton:hover {
-                color: #FF6AB3;
+                color: #1D4ED8;
+                background: none;
             }
         """)
         register_btn.clicked.connect(self.register_requested.emit)
@@ -237,51 +200,28 @@ class LoginWidget(QWidget):
         # 回车键登录
         self.password_input.returnPressed.connect(self._on_login)
     
-    def _input_style(self) -> str:
-        """输入框样式"""
-        return """
-            QLineEdit {
-                background: #111827;
-                border: 2px solid #2d3748;
-                border-radius: 12px;
-                padding: 0 20px;
-                font-size: 14px;
-                color: #F0F4F8;
-            }
-            QLineEdit:focus {
-                border-color: #00D4FF;
-                background: #1a2332;
-            }
-            QLineEdit::placeholder {
-                color: #4A5568;
-            }
-        """
-    
     def _create_quick_btn(self, text: str, color: str) -> QPushButton:
         """创建快速登录按钮"""
         btn = QPushButton(text)
-        btn.setMinimumHeight(42)
+        btn.setMinimumHeight(40)
         btn.setCursor(Qt.PointingHandCursor)
+        # 覆盖默认样式，使用自定义边框色
         btn.setStyleSheet(f"""
             QPushButton {{
-                background: transparent;
-                border: 2px solid {color};
-                border-radius: 10px;
-                color: {color};
+                background-color: #FFFFFF;
+                border: 1px solid #E5E7EB;
+                border-radius: 8px;
+                color: #4B5563;
                 font-size: 13px;
-                font-weight: bold;
+                font-weight: 500;
             }}
             QPushButton:hover {{
-                background: {color};
-                color: #0A0E17;
+                border-color: {color};
+                color: {color};
+                background-color: #F9FAFB;
             }}
         """)
         return btn
-    
-    def setup_animations(self):
-        """设置动画"""
-        # 可以添加入场动画
-        pass
     
     def _on_login(self):
         """登录按钮点击"""
@@ -292,28 +232,29 @@ class LoginWidget(QWidget):
         if username and password:
             self.login_requested.emit(username, password, remember)
         else:
-            # 简单的抖动效果提示
             self._shake_animation()
     
     def _shake_animation(self):
         """抖动动画"""
-        # 高亮显示空的输入框
+        # 简单的错误提示样式
+        error_style = """
+            border: 1px solid #EF4444;
+            background-color: #FEF2F2;
+        """
         if not self.username_input.text().strip():
-            self.username_input.setStyleSheet(self._input_style().replace(
-                "border: 2px solid #2d3748",
-                "border: 2px solid #EF4444"
-            ))
+            self.username_input.setStyleSheet(error_style)
         if not self.password_input.text():
-            self.password_input.setStyleSheet(self._input_style().replace(
-                "border: 2px solid #2d3748", 
-                "border: 2px solid #EF4444"
-            ))
+            self.password_input.setStyleSheet(error_style)
+            
+        # 恢复样式 (简单处理：延时恢复)
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(1000, lambda: self.username_input.setStyleSheet(""))
+        QTimer.singleShot(1000, lambda: self.password_input.setStyleSheet(""))
     
     def set_loading(self, loading: bool):
         """设置加载状态"""
         self.login_btn.setEnabled(not loading)
         if loading:
-            self.login_btn.setText("⏳  登录中...")
+            self.login_btn.setText("登录中...")
         else:
-            self.login_btn.setText("🚀  进入游戏")
-
+            self.login_btn.setText("进入游戏")
