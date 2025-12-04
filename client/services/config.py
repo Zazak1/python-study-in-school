@@ -28,7 +28,7 @@ class UserSettings:
 @dataclass
 class NetworkSettings:
     """网络设置"""
-    server_url: str = "wss://api.aether-party.com"
+    server_url: str = "ws://124.221.69.88:8765"
     timeout: int = 30
     reconnect_interval: int = 5
     max_reconnect_attempts: int = 10
