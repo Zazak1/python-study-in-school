@@ -1,196 +1,216 @@
 """
-游戏卡片组件 - 现代化浅色风格
+游戏卡片组件 - 2.0 设计升级
+支持：图标悬停上浮、彩色弥散阴影、背景视差
 """
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QFrame, QGraphicsDropShadowEffect
+    QFrame, QGraphicsDropShadowEffect
 )
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QPixmap
+from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve, QPoint
+from PySide6.QtGui import QColor, QCursor
+
+from ..styles.theme import CURRENT_THEME as t
 
 
 class GameCard(QWidget):
-    """游戏选择卡片"""
+    """高级游戏卡片"""
     
-    clicked = Signal(str)  # game_id
+    clicked = Signal(str)
     
-    # 游戏信息配置
+    # 游戏配置：配色更高级
     GAMES = {
         'gomoku': {
-            'name': '五子棋',
-            'icon': '⚫',
-            'desc': '经典对弈，策略博弈',
+            'name': '五子棋', 'icon': '⚫', 
+            'desc': '黑白对弈，智者争锋', 
             'players': '2人',
-            'color': '#10B981', # Green
-            'bg': '#ECFDF5'     # Light Green
+            'color': '#10B981', 'bg': '#ECFDF5'
         },
         'shooter2d': {
-            'name': '2D 射击',
-            'icon': '🔫',
-            'desc': '紧张刺激，快节奏对战',
+            'name': '2D 射击', 'icon': '🔫', 
+            'desc': '火力全开，生存竞技', 
             'players': '2-8人',
-            'color': '#EF4444', # Red
-            'bg': '#FEF2F2'     # Light Red
+            'color': '#EF4444', 'bg': '#FEF2F2'
         },
         'werewolf': {
-            'name': '狼人杀',
-            'icon': '🐺',
-            'desc': '语音推理，烧脑社交',
+            'name': '狼人杀', 'icon': '🐺', 
+            'desc': '谎言与推理的博弈', 
             'players': '6-12人',
-            'color': '#8B5CF6', # Purple
-            'bg': '#F5F3FF'     # Light Purple
+            'color': '#8B5CF6', 'bg': '#F5F3FF'
         },
         'monopoly': {
-            'name': '大富翁',
-            'icon': '🎲',
-            'desc': '商业帝国，策略经营',
+            'name': '大富翁', 'icon': '🎲', 
+            'desc': '运筹帷幄，商业大亨', 
             'players': '2-4人',
-            'color': '#F59E0B', # Amber
-            'bg': '#FFFBEB'     # Light Amber
+            'color': '#F59E0B', 'bg': '#FFFBEB'
         },
         'racing': {
-            'name': '赛车竞速',
-            'icon': '🏎️',
-            'desc': '速度激情，极限漂移',
+            'name': '赛车竞速', 'icon': '🏎️', 
+            'desc': '极速漂移，超越极限', 
             'players': '2-6人',
-            'color': '#06B6D4', # Cyan
-            'bg': '#ECFEFF'     # Light Cyan
+            'color': '#06B6D4', 'bg': '#ECFEFF'
         }
     }
     
     def __init__(self, game_id: str, parent=None):
         super().__init__(parent)
         self.game_id = game_id
-        self.game_info = self.GAMES.get(game_id, {})
-        self.setup_ui()
-    
-    def setup_ui(self):
-        """设置 UI"""
-        info = self.game_info
-        theme_color = info.get('color', '#2563EB')
-        bg_color = info.get('bg', '#F3F4F6')
+        self.info = self.GAMES.get(game_id, {})
+        self.theme_color = QColor(self.info.get('color', '#3B82F6'))
         
-        self.setMinimumSize(160, 180)
-        self.setMaximumSize(200, 220)
+        self.setup_ui()
+        self.setup_animations()
+        
+    def setup_ui(self):
+        self.setFixedSize(180, 220)
         self.setCursor(Qt.PointingHandCursor)
         
-        # 主布局
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10) # 给阴影留空间
         
-        # 卡片容器
+        # 卡片主体
         self.card = QFrame()
-        self.card.setObjectName("gameCard")
+        self.card.setObjectName("gameCard") # 使用 QSS 基础样式
         self.card.setStyleSheet(f"""
             #gameCard {{
                 background-color: #FFFFFF;
-                border: 1px solid #E5E7EB;
-                border-radius: 16px;
-            }}
-            #gameCard:hover {{
-                border-color: {theme_color};
-                background-color: {bg_color};
+                border: 1px solid {t.border_light};
+                border-radius: 24px;
             }}
         """)
         
-        # 默认阴影
+        # 弥散阴影 (默认淡)
         self.shadow = QGraphicsDropShadowEffect()
         self.shadow.setBlurRadius(20)
-        self.shadow.setXOffset(0)
-        self.shadow.setYOffset(4)
-        self.shadow.setColor(QColor(0, 0, 0, 15)) # 浅色阴影
+        self.shadow.setOffset(0, 8)
+        self.shadow.setColor(QColor(0, 0, 0, 15))
         self.card.setGraphicsEffect(self.shadow)
         
-        card_layout = QVBoxLayout(self.card)
-        card_layout.setContentsMargins(16, 20, 16, 16)
-        card_layout.setSpacing(8)
+        # 内部布局
+        inner_layout = QVBoxLayout(self.card)
+        inner_layout.setContentsMargins(16, 24, 16, 20)
+        inner_layout.setSpacing(12)
         
-        # 游戏图标背景圆
-        icon_container = QLabel()
-        icon_container.setFixedSize(64, 64)
-        icon_container.setAlignment(Qt.AlignCenter)
-        # 使用半透明背景
-        rgba_color = self._hex_to_rgba(theme_color, 0.1)
-        icon_container.setStyleSheet(f"""
-            background-color: {rgba_color};
-            border-radius: 32px;
-            margin-bottom: 8px;
+        # 1. 图标容器 (带背景色)
+        self.icon_container = QLabel()
+        self.icon_container.setFixedSize(72, 72)
+        self.icon_container.setAlignment(Qt.AlignCenter)
+        
+        # 计算背景色 RGBA
+        bg_color = self.info.get('bg', '#F3F4F6')
+        self.icon_container.setStyleSheet(f"""
+            background-color: {bg_color};
+            border-radius: 36px;
         """)
         
-        # 图标文字
-        icon_label = QLabel(info.get('icon', '🎮'))
-        icon_label.setParent(icon_container)
-        icon_label.setStyleSheet("font-size: 32px; background: transparent;")
-        icon_label.move(16, 12) # 简单居中微调
+        # 图标
+        self.icon_label = QLabel(self.info.get('icon', '🎮'))
+        self.icon_label.setParent(self.icon_container)
+        self.icon_label.setStyleSheet("font-size: 36px; background: transparent;")
+        self.icon_label.move(18, 14) # 微调居中
         
-        # 添加到布局居中
+        # 居中放置图标
         h_box = QHBoxLayout()
         h_box.addStretch()
-        h_box.addWidget(icon_container)
+        h_box.addWidget(self.icon_container)
         h_box.addStretch()
-        card_layout.addLayout(h_box)
+        inner_layout.addLayout(h_box)
         
-        # 游戏名称
-        name_label = QLabel(info.get('name', '未知游戏'))
-        name_label.setAlignment(Qt.AlignCenter)
-        name_label.setStyleSheet(f"""
+        # 2. 文本信息
+        self.name_label = QLabel(self.info.get('name', '未知'))
+        self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setStyleSheet(f"""
             font-size: 16px;
             font-weight: 700;
-            color: #111827;
-            background: transparent;
+            color: {t.text_display};
         """)
-        card_layout.addWidget(name_label)
+        inner_layout.addWidget(self.name_label)
         
-        # 游戏描述
-        desc_label = QLabel(info.get('desc', ''))
-        desc_label.setAlignment(Qt.AlignCenter)
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("""
+        self.desc_label = QLabel(self.info.get('desc', ''))
+        self.desc_label.setAlignment(Qt.AlignCenter)
+        self.desc_label.setWordWrap(True)
+        self.desc_label.setStyleSheet(f"""
             font-size: 12px;
-            color: #6B7280;
-            background: transparent;
+            color: {t.text_caption};
+            line-height: 1.4;
         """)
-        card_layout.addWidget(desc_label)
+        inner_layout.addWidget(self.desc_label)
         
-        # 玩家数标签
-        players_label = QLabel(f"👥 {info.get('players', '?')}")
-        players_label.setAlignment(Qt.AlignCenter)
-        players_label.setStyleSheet(f"""
+        # 3. 底部标签 (人数)
+        self.players_label = QLabel(f"👥 {self.info.get('players', '?')}")
+        self.players_label.setAlignment(Qt.AlignCenter)
+        self.players_label.setStyleSheet(f"""
             font-size: 11px;
-            color: {theme_color};
+            color: {self.info.get('color')};
             font-weight: 600;
-            background: transparent;
-            padding-top: 4px;
+            background-color: {bg_color};
+            border-radius: 6px;
+            padding: 4px 8px;
         """)
-        card_layout.addWidget(players_label)
         
-        card_layout.addStretch()
+        h_box2 = QHBoxLayout()
+        h_box2.addStretch()
+        h_box2.addWidget(self.players_label)
+        h_box2.addStretch()
+        inner_layout.addLayout(h_box2)
         
+        inner_layout.addStretch()
         layout.addWidget(self.card)
-    
-    def _hex_to_rgba(self, hex_color, alpha):
-        """辅助函数：Hex转RGBA"""
-        c = QColor(hex_color)
-        return f"rgba({c.red()}, {c.green()}, {c.blue()}, {alpha})"
-    
+
+    def setup_animations(self):
+        """设置动效"""
+        # 浮起动画
+        self.anim_float = QPropertyAnimation(self.card, b"pos")
+        self.anim_float.setDuration(200)
+        self.anim_float.setEasingCurve(QEasingCurve.OutQuad)
+        
+        # 图标缩放动画 (这里用简单的位移代替，因为 QLabel 缩放复杂)
+        self.anim_icon = QPropertyAnimation(self.icon_container, b"pos")
+        
+    def enterEvent(self, event):
+        """悬停: 上浮 + 阴影加深 + 边框变色"""
+        # 1. 上浮
+        orig_pos = self.card.pos()
+        self.anim_float.setStartValue(orig_pos)
+        self.anim_float.setEndValue(QPoint(orig_pos.x(), 6)) # 假设 margin 10, 上浮 4px
+        self.anim_float.start()
+        
+        # 2. 阴影: 变成彩色弥散
+        c = self.theme_color
+        self.shadow.setColor(QColor(c.red(), c.green(), c.blue(), 80)) # 彩色阴影
+        self.shadow.setBlurRadius(30)
+        self.shadow.setOffset(0, 12)
+        
+        # 3. 边框
+        self.card.setStyleSheet(f"""
+            #gameCard {{
+                background-color: #FFFFFF;
+                border: 1px solid {self.info.get('color')};
+                border-radius: 24px;
+            }}
+        """)
+        super().enterEvent(event)
+        
+    def leaveEvent(self, event):
+        """离开: 恢复"""
+        # 1. 下落
+        self.anim_float.setEndValue(QPoint(10, 10)) # 回到 margin 位置
+        self.anim_float.start()
+        
+        # 2. 阴影恢复
+        self.shadow.setColor(QColor(0, 0, 0, 15))
+        self.shadow.setBlurRadius(20)
+        self.shadow.setOffset(0, 8)
+        
+        # 3. 边框恢复
+        self.card.setStyleSheet(f"""
+            #gameCard {{
+                background-color: #FFFFFF;
+                border: 1px solid {t.border_light};
+                border-radius: 24px;
+            }}
+        """)
+        super().leaveEvent(event)
+
     def mousePressEvent(self, event):
-        """鼠标点击"""
         if event.button() == Qt.LeftButton:
             self.clicked.emit(self.game_id)
-        super().mousePressEvent(event)
-    
-    def enterEvent(self, event):
-        """鼠标进入"""
-        # 加深阴影
-        self.shadow.setBlurRadius(30)
-        self.shadow.setYOffset(8)
-        self.shadow.setColor(QColor(0, 0, 0, 30))
-        # 微微上浮效果通过 margin 实现稍微复杂，这里只做阴影变化
-        super().enterEvent(event)
-    
-    def leaveEvent(self, event):
-        """鼠标离开"""
-        self.shadow.setBlurRadius(20)
-        self.shadow.setYOffset(4)
-        self.shadow.setColor(QColor(0, 0, 0, 15))
-        super().leaveEvent(event)

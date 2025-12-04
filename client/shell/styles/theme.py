@@ -1,6 +1,7 @@
 """
-主题配置 - 现代化浅色风格
-采用 Material Design 3 / Apple Design 风格，清爽、明亮、高可读性
+主题配置 - 2.0 设计升级
+采用 Apple Design / Material 3 融合风格
+强调：弥散阴影、微渐变、精细排版、流畅动效
 """
 from dataclasses import dataclass
 from typing import Dict
@@ -9,121 +10,97 @@ from typing import Dict
 @dataclass
 class Theme:
     """主题配置"""
-    # 主色调
-    primary: str           # 品牌主色 (科技蓝)
-    primary_light: str     # 主色亮版 (悬停)
-    primary_dark: str      # 主色暗版 (按下)
+    # 品牌色 (Brand Colors)
+    primary: str           # 主色 (Royal Blue)
+    primary_hover: str     # 悬停
+    primary_pressed: str   # 按下
+    primary_bg: str        # 主色背景 (极淡)
     
-    # 次要色
-    secondary: str         # 次要色 (活力橙)
-    accent: str            # 点缀色 (紫色/粉色)
+    # 功能色 (Functional Colors)
+    secondary: str         # 次要色 (Coral)
+    success: str           # 成功 (Emerald)
+    warning: str           # 警告 (Amber)
+    error: str             # 错误 (Rose)
+    info: str              # 信息 (Sky)
     
-    # 背景色
-    bg_base: str           # 基础背景 (应用底色)
-    bg_surface: str        # 表面背景 (卡片/面板)
-    bg_surface_variant: str # 变体表面 (输入框/列表项)
+    # 背景色 (Backgrounds)
+    bg_base: str           # 应用底色 (带微蓝灰)
+    bg_card: str           # 卡片背景 (纯白)
+    bg_hover: str          # 悬停背景
+    bg_active: str         # 激活背景
+    bg_overlay: str        # 遮罩层
     
-    # 文字色
-    text_primary: str      # 主要文字 (深灰/黑)
-    text_secondary: str    # 次要文字 (中灰)
-    text_tertiary: str     # 辅助文字 (浅灰)
-    text_inverse: str      # 反色文字 (白)
+    # 文字色 (Typography)
+    text_display: str      # 标题 (几乎纯黑)
+    text_body: str         # 正文 (深灰)
+    text_caption: str      # 说明 (中灰)
+    text_placeholder: str  # 占位符 (浅灰)
+    text_white: str        # 反白文字
     
-    # 状态色
-    success: str           # 成功/在线
-    warning: str           # 警告
-    error: str             # 错误/离线
-    info: str              # 信息
+    # 边框 (Borders)
+    border_light: str      # 极细边框
+    border_normal: str     # 常规边框
+    border_active: str     # 激活边框
     
-    # 边框与分割线
-    border: str            # 常规边框
-    border_focus: str      # 焦点边框
-    divider: str           # 分割线
+    # 阴影 (Shadows - CSS RGBA)
+    shadow_sm: str         # 浮起
+    shadow_md: str         # 悬停
+    shadow_lg: str         # 模态/弹出
+    shadow_colored: str    # 彩色弥散阴影模板
     
-    # 特效
-    shadow_sm: str         # 小阴影
-    shadow_md: str         # 中阴影
-    shadow_lg: str         # 大阴影
-    overlay: str           # 遮罩层
-    
-    # 字体
-    font_family: str       # 主字体
-    font_family_mono: str  # 等宽字体
+    # 字体 (Fonts)
+    font_family: str
     
     def to_dict(self) -> Dict[str, str]:
-        """转为字典"""
-        return {
-            'primary': self.primary,
-            'primary_light': self.primary_light,
-            'primary_dark': self.primary_dark,
-            'secondary': self.secondary,
-            'accent': self.accent,
-            'bg_base': self.bg_base,
-            'bg_surface': self.bg_surface,
-            'bg_surface_variant': self.bg_surface_variant,
-            'text_primary': self.text_primary,
-            'text_secondary': self.text_secondary,
-            'text_tertiary': self.text_tertiary,
-            'text_inverse': self.text_inverse,
-            'success': self.success,
-            'warning': self.warning,
-            'error': self.error,
-            'info': self.info,
-            'border': self.border,
-            'border_focus': self.border_focus,
-            'divider': self.divider,
-            'shadow_sm': self.shadow_sm,
-            'shadow_md': self.shadow_md,
-            'shadow_lg': self.shadow_lg,
-            'overlay': self.overlay,
-            'font_family': self.font_family,
-            'font_family_mono': self.font_family_mono,
-        }
+        return self.__dict__
 
 
-# 现代化浅色主题
-LIGHT_MODERN_THEME = Theme(
-    # 主色：Inter Blue
-    primary='#2563EB',        # 鲜艳的蓝
-    primary_light='#3B82F6',  # 亮蓝
-    primary_dark='#1D4ED8',   # 深蓝
+# 2.0 升级版主题
+DESIGN_THEME = Theme(
+    # 品牌色：更现代的 Royal Blue
+    primary='#3B82F6',        # 标准蓝
+    primary_hover='#2563EB',  # 加深
+    primary_pressed='#1D4ED8',
+    primary_bg='#EFF6FF',     # 极淡蓝背景
     
-    # 次要色
-    secondary='#F59E0B',      # 琥珀色
-    accent='#8B5CF6',         # 梦幻紫
-    
-    # 背景：灰白层次
-    bg_base='#F3F4F6',        # 极浅灰底色
-    bg_surface='#FFFFFF',     # 纯白卡片
-    bg_surface_variant='#F9FAFB', # 浅灰表面
-    
-    # 文字：高对比度深灰
-    text_primary='#111827',   # 近乎黑
-    text_secondary='#4B5563', # 深灰
-    text_tertiary='#9CA3AF',  # 浅灰
-    text_inverse='#FFFFFF',   # 纯白
-    
-    # 状态色
+    # 功能色：低饱和度，不刺眼
+    secondary='#F97316',      # 活力橙
     success='#10B981',        # 翡翠绿
     warning='#F59E0B',        # 琥珀黄
     error='#EF4444',          # 玫瑰红
-    info='#3B82F6',           # 天空蓝
+    info='#0EA5E9',           # 天空蓝
+    
+    # 背景：层次感
+    bg_base='#F8FAFC',        # 冷灰底色
+    bg_card='#FFFFFF',        # 纯白
+    bg_hover='#F1F5F9',       # 交互悬停
+    bg_active='#E2E8F0',      # 激活/按下
+    bg_overlay='rgba(255, 255, 255, 0.85)',
+    
+    # 文字：Inter 风格
+    text_display='#0F172A',   # 标题黑
+    text_body='#334155',      # 正文深蓝灰
+    text_caption='#64748B',   # 说明灰
+    text_placeholder='#94A3B8',
+    text_white='#FFFFFF',
     
     # 边框
-    border='#E5E7EB',         # 浅灰边框
-    border_focus='#2563EB',   # 聚焦蓝边框
-    divider='#F3F4F6',        # 分割线
+    border_light='#F1F5F9',
+    border_normal='#E2E8F0',
+    border_active='#3B82F6',
     
-    # 阴影 (CSS 格式 rgba)
-    shadow_sm='rgba(0, 0, 0, 0.05)',
-    shadow_md='rgba(0, 0, 0, 0.1)',
-    shadow_lg='rgba(0, 0, 0, 0.15)',
-    overlay='rgba(255, 255, 255, 0.8)',
+    # 阴影系统
+    shadow_sm='rgba(0, 0, 0, 0.04)',
+    shadow_md='rgba(0, 0, 0, 0.08)',
+    shadow_lg='rgba(0, 0, 0, 0.12)',
+    shadow_colored='rgba({r}, {g}, {b}, 0.25)', # 动态替换
     
-    # 字体 - 优先使用系统字体
-    font_family='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif',
-    font_family_mono='"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+    # 字体栈
+    font_family='-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei UI", "Helvetica Neue", Helvetica, Arial, sans-serif',
 )
 
-# 默认主题指向新主题
-DARK_THEME = LIGHT_MODERN_THEME 
+# 导出供调用
+CURRENT_THEME = DESIGN_THEME
+
+# 兼容旧代码 (虽然现在是浅色，但为了兼容引用保留变量名)
+DARK_THEME = DESIGN_THEME 
