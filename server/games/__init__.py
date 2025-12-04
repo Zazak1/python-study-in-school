@@ -3,7 +3,6 @@
 """
 from .base import GameLogic
 from .gomoku import GomokuGame
-from .game_service import GameService
 
 # 游戏逻辑映射
 GAME_LOGIC_MAP = {
@@ -11,10 +10,14 @@ GAME_LOGIC_MAP = {
     # 其他游戏后续添加
 }
 
+# 延迟导入 GameService 避免循环引用
+def get_game_service():
+    from .game_service import GameService
+    return GameService
+
 __all__ = [
     'GameLogic',
     'GomokuGame',
-    'GameService',
-    'GAME_LOGIC_MAP'
+    'GAME_LOGIC_MAP',
+    'get_game_service'
 ]
-

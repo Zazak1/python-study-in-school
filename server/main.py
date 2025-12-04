@@ -10,7 +10,7 @@ from .config import config
 from .gateway import WebSocketServer, ConnectionManager, MessageHandler
 from .gateway.handler import ServiceRegistry
 from .services import AuthService, UserService, RoomService, MatchService, ChatService
-from .games import GameService
+from .games.game_service import GameService
 
 
 class AetherPartyServer:
@@ -369,4 +369,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-

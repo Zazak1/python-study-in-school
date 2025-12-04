@@ -5,7 +5,6 @@ import asyncio
 from typing import Dict, Any, Optional
 
 from .base import GameLogic
-from . import GAME_LOGIC_MAP
 from ..models.room import Room, RoomState
 from ..gateway.connection import ConnectionManager
 from ..gateway.handler import ServiceRegistry
@@ -23,12 +22,17 @@ class GameService:
         # 帧同步任务 {room_id: Task}
         self._tick_tasks: Dict[str, asyncio.Task] = {}
     
+    def _get_game_class(self, game_type: str):
+        """获取游戏逻辑类（避免循环导入）"""
+        from . import GAME_LOGIC_MAP
+        return GAME_LOGIC_MAP.get(game_type)
+    
     async def init_game(self, room: Room) -> bool:
         """初始化游戏"""
         game_type = room.game_type
         
         # 获取游戏逻辑类
-        game_class = GAME_LOGIC_MAP.get(game_type)
+        game_class = self._get_game_class(game_type)
         if not game_class:
             print(f"[GameService] 未知的游戏类型: {game_type}")
             return False
@@ -181,4 +185,3 @@ class GameService:
             task.cancel()
         self._tick_tasks.clear()
         self._games.clear()
-
