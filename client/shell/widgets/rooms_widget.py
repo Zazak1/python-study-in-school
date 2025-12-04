@@ -6,22 +6,20 @@ from PySide6.QtWidgets import (
     QPushButton, QFrame, QScrollArea
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
 from typing import List, Dict, Any
 
 from ..styles.theme import CURRENT_THEME as t
-from ..utils.animation import AnimationUtils
 
 
 class RoomCard(QWidget):
-    """房间卡片 - 修复尺寸和对齐"""
+    """房间卡片"""
     
     join_clicked = Signal(str)
     
     def __init__(self, room_data: Dict[str, Any], parent=None):
         super().__init__(parent)
         self.room_data = room_data
-        self.setFixedHeight(88)
+        self.setFixedHeight(80)
         self.setup_ui()
     
     def setup_ui(self):
@@ -44,8 +42,8 @@ class RoomCard(QWidget):
         """)
         
         card_layout = QHBoxLayout(card)
-        card_layout.setContentsMargins(16, 12, 16, 12)
-        card_layout.setSpacing(16)
+        card_layout.setContentsMargins(14, 10, 14, 10)
+        card_layout.setSpacing(14)
         
         room = self.room_data
         game_type = room.get('game_type', 'unknown')
@@ -62,31 +60,32 @@ class RoomCard(QWidget):
         
         # 图标容器 - 固定尺寸
         icon_container = QWidget()
-        icon_container.setFixedSize(48, 48)
+        icon_container.setFixedSize(44, 44)
         
         icon_bg = QFrame(icon_container)
-        icon_bg.setGeometry(0, 0, 48, 48)
+        icon_bg.setGeometry(0, 0, 44, 44)
         icon_bg.setStyleSheet(f"""
             background-color: {cfg['bg']};
-            border-radius: 12px;
+            border-radius: 10px;
         """)
         
         icon = QLabel(cfg['icon'], icon_container)
-        icon.setGeometry(0, 0, 48, 48)
+        icon.setGeometry(0, 0, 44, 44)
         icon.setAlignment(Qt.AlignCenter)
-        icon.setStyleSheet("font-size: 24px; background: transparent;")
+        icon.setStyleSheet("font-size: 22px; background: transparent;")
         
         card_layout.addWidget(icon_container)
         
         # 信息区
-        info_layout = QVBoxLayout()
+        info_widget = QWidget()
+        info_layout = QVBoxLayout(info_widget)
+        info_layout.setContentsMargins(0, 0, 0, 0)
         info_layout.setSpacing(4)
-        info_layout.setAlignment(Qt.AlignVCenter)
         
         # 房间名
         name_label = QLabel(room.get('name', f'房间 {room.get("room_id", "?")}'))
         name_label.setStyleSheet(f"""
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             color: {t.text_display};
         """)
@@ -94,7 +93,8 @@ class RoomCard(QWidget):
         
         # 标签行
         tags_layout = QHBoxLayout()
-        tags_layout.setSpacing(8)
+        tags_layout.setSpacing(6)
+        tags_layout.setContentsMargins(0, 0, 0, 0)
         
         # 游戏类型标签
         game_tag = QLabel(cfg['name'])
@@ -102,7 +102,7 @@ class RoomCard(QWidget):
             font-size: 11px;
             color: {cfg['color']};
             background-color: {cfg['bg']};
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
             font-weight: 600;
         """)
@@ -116,7 +116,7 @@ class RoomCard(QWidget):
             font-size: 11px;
             color: {t.text_caption};
             background-color: {t.bg_base};
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
         """)
         tags_layout.addWidget(players_tag)
@@ -129,7 +129,7 @@ class RoomCard(QWidget):
         tags_layout.addStretch()
         info_layout.addLayout(tags_layout)
         
-        card_layout.addLayout(info_layout, 1)
+        card_layout.addWidget(info_widget, 1)
         
         # 操作按钮
         is_playing = room.get('is_playing', False)
@@ -159,7 +159,7 @@ class RoomCard(QWidget):
             card_layout.addWidget(status)
         else:
             join_btn = QPushButton("加入")
-            join_btn.setFixedSize(64, 32)
+            join_btn.setFixedSize(56, 30)
             join_btn.setCursor(Qt.PointingHandCursor)
             join_btn.setStyleSheet(f"""
                 QPushButton {{
@@ -196,20 +196,20 @@ class RoomsWidget(QWidget):
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(16)
+        layout.setSpacing(14)
         
         # 头部
         header = QHBoxLayout()
         
         title = QLabel("房间大厅")
-        title.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {t.text_display};")
+        title.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {t.text_display};")
         header.addWidget(title)
         
         header.addStretch()
         
         # 快速匹配按钮
         quick_btn = QPushButton("⚡ 快速匹配")
-        quick_btn.setFixedHeight(36)
+        quick_btn.setFixedHeight(34)
         quick_btn.setCursor(Qt.PointingHandCursor)
         quick_btn.setStyleSheet(f"""
             QPushButton {{
@@ -217,7 +217,7 @@ class RoomsWidget(QWidget):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                padding: 0 16px;
+                padding: 0 14px;
                 font-size: 13px;
                 font-weight: 600;
             }}
@@ -230,7 +230,7 @@ class RoomsWidget(QWidget):
         
         # 创建房间按钮
         create_btn = QPushButton("+ 创建房间")
-        create_btn.setFixedHeight(36)
+        create_btn.setFixedHeight(34)
         create_btn.setCursor(Qt.PointingHandCursor)
         create_btn.setStyleSheet(f"""
             QPushButton {{
@@ -238,7 +238,7 @@ class RoomsWidget(QWidget):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                padding: 0 16px;
+                padding: 0 14px;
                 font-size: 13px;
                 font-weight: 600;
             }}
@@ -259,8 +259,8 @@ class RoomsWidget(QWidget):
         
         self.container = QWidget()
         self.rooms_layout = QVBoxLayout(self.container)
-        self.rooms_layout.setContentsMargins(0, 0, 8, 0)
-        self.rooms_layout.setSpacing(12)
+        self.rooms_layout.setContentsMargins(0, 0, 4, 0)
+        self.rooms_layout.setSpacing(8)
         self.rooms_layout.addStretch()
         
         scroll.setWidget(self.container)
@@ -287,6 +287,3 @@ class RoomsWidget(QWidget):
                 card = RoomCard(room)
                 card.join_clicked.connect(self.join_room.emit)
                 self.rooms_layout.insertWidget(i, card)
-                
-                # 入场动画
-                AnimationUtils.slide_in_up(card, 300, 20 + i*30)

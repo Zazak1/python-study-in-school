@@ -3,13 +3,14 @@
 """
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QLineEdit, QPushButton, QScrollArea, QFrame,
-    QTextEdit
+    QLineEdit, QPushButton, QScrollArea, QFrame
 )
 from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QKeyEvent, QColor, QIcon
+from PySide6.QtGui import QKeyEvent
 from typing import List, Dict, Any
 from datetime import datetime
+
+from ..styles.theme import CURRENT_THEME as t
 
 
 class MessageBubble(QWidget):
@@ -73,11 +74,10 @@ class MessageBubble(QWidget):
         # 消息内容
         content = QLabel(msg.get('content', ''))
         content.setWordWrap(True)
-        content.setMaximumWidth(240)
+        content.setMaximumWidth(220)
         content.setStyleSheet(f"""
             font-size: 13px;
             color: {text_color};
-            line-height: 1.4;
         """)
         bubble_layout.addWidget(content)
         
@@ -107,7 +107,6 @@ class ChatInput(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setPlaceholderText("输入消息...")
-        # 样式在 QSS 中定义
     
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
@@ -188,7 +187,7 @@ class ChatWidget(QWidget):
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll.setStyleSheet("""
             QScrollArea {
-                background: #F9FAFB; /* 浅灰背景 */
+                background: #F9FAFB;
                 border: 1px solid #E5E7EB;
                 border-radius: 8px;
             }
@@ -229,16 +228,22 @@ class ChatWidget(QWidget):
         self.chat_input.send_message.connect(self._on_send)
         input_layout.addWidget(self.chat_input, 1)
         
-        # 发送按钮
+        # 发送按钮 - 直接设置完整样式
         send_btn = QPushButton("发送")
         send_btn.setFixedSize(56, 36)
         send_btn.setCursor(Qt.PointingHandCursor)
-        send_btn.setProperty("class", "primary")
-        send_btn.setStyleSheet("""
-            QPushButton {
+        send_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {t.primary};
+                color: white;
+                border: none;
                 border-radius: 18px;
                 font-size: 12px;
-            }
+                font-weight: 600;
+            }}
+            QPushButton:hover {{
+                background-color: {t.primary_hover};
+            }}
         """)
         send_btn.clicked.connect(lambda: self._on_send(self.chat_input.text()))
         input_layout.addWidget(send_btn)
@@ -263,8 +268,9 @@ class ChatWidget(QWidget):
     def add_message(self, msg_data: Dict[str, Any]):
         is_self = msg_data.get('sender_id') == self.local_user_id
         
+        # 移除 stretch
         if self.messages_layout.count() > 0:
-            item = self.messages_layout.takeAt(self.messages_layout.count() - 1)
+            self.messages_layout.takeAt(self.messages_layout.count() - 1)
         
         bubble = MessageBubble(msg_data, is_self)
         self.messages_layout.addWidget(bubble)

@@ -3,7 +3,8 @@
 """
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QPushButton, QFrame, QGraphicsDropShadowEffect
+    QPushButton, QFrame, QGraphicsDropShadowEffect,
+    QScrollArea
 )
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QColor
@@ -12,12 +13,11 @@ from .game_card import GameCard
 from .friends_widget import FriendsWidget
 from .rooms_widget import RoomsWidget
 from .chat_widget import ChatWidget
-from ..utils.animation import AnimationUtils
 from ..styles.theme import CURRENT_THEME as t
 
 
 class UserProfileBar(QWidget):
-    """用户信息栏 - 修复对齐"""
+    """用户信息栏"""
     
     settings_clicked = Signal()
     logout_clicked = Signal()
@@ -167,9 +167,6 @@ class LobbyWidget(QWidget):
         super().__init__(parent)
         self.setup_ui()
         self.load_demo_data()
-        
-        # 入场动画
-        QTimer.singleShot(100, lambda: AnimationUtils.fade_in(self, 400))
     
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -189,14 +186,14 @@ class LobbyWidget(QWidget):
         content = QWidget()
         content.setStyleSheet(f"background-color: {t.bg_base};")
         content_layout = QHBoxLayout(content)
-        content_layout.setContentsMargins(32, 32, 32, 32)
+        content_layout.setContentsMargins(32, 24, 32, 24)
         content_layout.setSpacing(24)
         
         # 左侧：游戏选择 + 房间列表
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(24)
+        left_layout.setSpacing(20)
         
         # 游戏选择标题
         games_title = QLabel("开始游戏")
@@ -207,27 +204,40 @@ class LobbyWidget(QWidget):
         """)
         left_layout.addWidget(games_title)
         
-        # 游戏卡片网格
-        games_grid = QHBoxLayout()
+        # 游戏卡片 - 水平滚动区域
+        games_scroll = QScrollArea()
+        games_scroll.setWidgetResizable(True)
+        games_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        games_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        games_scroll.setFixedHeight(240)
+        games_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        
+        games_container = QWidget()
+        games_grid = QHBoxLayout(games_container)
+        games_grid.setContentsMargins(0, 0, 0, 0)
         games_grid.setSpacing(16)
         
         game_ids = ['gomoku', 'shooter2d', 'werewolf', 'monopoly', 'racing']
-        for i, game_id in enumerate(game_ids):
+        for game_id in game_ids:
             card = GameCard(game_id)
             card.clicked.connect(self.game_selected.emit)
             games_grid.addWidget(card)
-            
-            # 依次入场
-            QTimer.singleShot(100 + i * 50, lambda c=card: AnimationUtils.slide_in_up(c, 400, 20))
         
         games_grid.addStretch()
-        left_layout.addLayout(games_grid)
+        games_scroll.setWidget(games_container)
+        left_layout.addWidget(games_scroll)
         
         # 房间列表（卡片容器）
         rooms_card = QFrame()
-        rooms_card.setObjectName("card")
+        rooms_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {t.bg_card};
+                border: 1px solid {t.border_light};
+                border-radius: 16px;
+            }}
+        """)
         rooms_inner = QVBoxLayout(rooms_card)
-        rooms_inner.setContentsMargins(24, 24, 24, 24)
+        rooms_inner.setContentsMargins(20, 20, 20, 20)
         
         self.rooms_widget = RoomsWidget()
         self.rooms_widget.join_room.connect(self.room_joined.emit)
@@ -241,16 +251,22 @@ class LobbyWidget(QWidget):
         
         # 右侧：好友 + 聊天
         right_panel = QWidget()
-        right_panel.setFixedWidth(360)
+        right_panel.setFixedWidth(340)
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(24)
+        right_layout.setSpacing(20)
         
         # 好友卡片
         friends_card = QFrame()
-        friends_card.setObjectName("card")
+        friends_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {t.bg_card};
+                border: 1px solid {t.border_light};
+                border-radius: 16px;
+            }}
+        """)
         friends_inner = QVBoxLayout(friends_card)
-        friends_inner.setContentsMargins(20, 20, 20, 20)
+        friends_inner.setContentsMargins(16, 16, 16, 16)
         
         self.friends_widget = FriendsWidget()
         friends_inner.addWidget(self.friends_widget)
@@ -259,14 +275,20 @@ class LobbyWidget(QWidget):
         
         # 聊天卡片
         chat_card = QFrame()
-        chat_card.setObjectName("card")
+        chat_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {t.bg_card};
+                border: 1px solid {t.border_light};
+                border-radius: 16px;
+            }}
+        """)
         chat_inner = QVBoxLayout(chat_card)
-        chat_inner.setContentsMargins(20, 20, 20, 20)
+        chat_inner.setContentsMargins(16, 16, 16, 16)
         
         self.chat_widget = ChatWidget()
         chat_inner.addWidget(self.chat_widget)
         
-        right_layout.addWidget(chat_card, 2)
+        right_layout.addWidget(chat_card, 1)
         
         content_layout.addWidget(right_panel)
         

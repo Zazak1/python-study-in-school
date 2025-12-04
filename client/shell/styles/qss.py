@@ -23,7 +23,6 @@ def get_stylesheet(theme: Theme = CURRENT_THEME) -> str:
     }}
     
     /* ========== 卡片系统 ========== */
-    /* 通用卡片：白色、圆角、微边框 */
     QFrame[class="card"], #card, #loginCard, #gameCard {{
         background-color: {t['bg_card']};
         border: 1px solid {t['border_light']};
@@ -36,36 +35,29 @@ def get_stylesheet(theme: Theme = CURRENT_THEME) -> str:
         color: {t['text_body']};
     }}
     
-    /* Display: 巨型标题 (登录页) */
     QLabel[class="display"] {{
         font-size: 36px;
         font-weight: 800;
         color: {t['text_display']};
-        letter-spacing: -1px;
     }}
     
-    /* H1: 页面标题 */
     QLabel[class="h1"] {{
         font-size: 24px;
         font-weight: 700;
         color: {t['text_display']};
-        letter-spacing: -0.5px;
     }}
     
-    /* H2: 模块标题 */
     QLabel[class="h2"] {{
         font-size: 18px;
         font-weight: 600;
         color: {t['text_display']};
     }}
     
-    /* Body: 正文 */
     QLabel[class="body"] {{
         font-size: 14px;
         color: {t['text_body']};
     }}
     
-    /* Caption: 说明/辅助 */
     QLabel[class="caption"] {{
         font-size: 12px;
         color: {t['text_caption']};
@@ -80,7 +72,6 @@ def get_stylesheet(theme: Theme = CURRENT_THEME) -> str:
         padding: 8px 16px;
         font-weight: 600;
         font-size: 14px;
-        transition: all 0.2s; /* Qt 不支持 QSS transition，仅作标记 */
     }}
     
     QPushButton:hover {{
@@ -91,10 +82,9 @@ def get_stylesheet(theme: Theme = CURRENT_THEME) -> str:
     
     QPushButton:pressed {{
         background-color: {t['bg_active']};
-        transform: translateY(1px);
     }}
     
-    /* Primary Button: 品牌色填充 */
+    /* Primary Button */
     QPushButton[class="primary"] {{
         background-color: {t['primary']};
         color: {t['text_white']};
@@ -110,7 +100,7 @@ def get_stylesheet(theme: Theme = CURRENT_THEME) -> str:
         background-color: {t['primary_pressed']};
     }}
     
-    /* Ghost Button: 无背景 */
+    /* Ghost Button */
     QPushButton[class="ghost"] {{
         background-color: transparent;
         border: none;
@@ -123,11 +113,11 @@ def get_stylesheet(theme: Theme = CURRENT_THEME) -> str:
         color: {t['primary']};
     }}
     
-    /* Icon Button: 圆形图标按钮 */
+    /* Icon Button */
     QPushButton[class="icon-btn"] {{
         background-color: transparent;
         border: none;
-        border-radius: 18px; /* 假设 36px 宽高 */
+        border-radius: 18px;
         padding: 0;
     }}
     
@@ -153,7 +143,7 @@ def get_stylesheet(theme: Theme = CURRENT_THEME) -> str:
     
     QLineEdit:focus {{
         border: 2px solid {t['primary']};
-        padding: 11px 15px; /* 补偿 border 宽度 */
+        padding: 11px 15px;
         background-color: #FFFFFF;
     }}
     

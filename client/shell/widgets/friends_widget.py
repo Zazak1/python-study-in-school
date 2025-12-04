@@ -3,7 +3,7 @@
 """
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QLineEdit, QPushButton, QFrame
+    QLineEdit, QPushButton, QFrame, QScrollArea
 )
 from PySide6.QtCore import Qt, Signal
 from typing import List, Dict, Any
@@ -12,19 +12,19 @@ from ..styles.theme import CURRENT_THEME as t
 
 
 class FriendItem(QWidget):
-    """好友项 - 修复对齐"""
+    """好友项"""
     
     invite_clicked = Signal(str)
     
     def __init__(self, user_data: Dict[str, Any], parent=None):
         super().__init__(parent)
         self.user_data = user_data
-        self.setFixedHeight(68)
+        self.setFixedHeight(60)
         self.setup_ui()
         
     def setup_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(12)
         
         user = self.user_data
@@ -32,26 +32,26 @@ class FriendItem(QWidget):
         
         # 头像容器 - 固定尺寸
         avatar_container = QWidget()
-        avatar_container.setFixedSize(44, 44)
+        avatar_container.setFixedSize(40, 40)
         
         # 头像背景
         avatar_bg = QFrame(avatar_container)
-        avatar_bg.setGeometry(0, 0, 44, 44)
+        avatar_bg.setGeometry(0, 0, 40, 40)
         avatar_bg.setStyleSheet(f"""
             background-color: {t.bg_base};
-            border-radius: 22px;
+            border-radius: 20px;
         """)
         
         # 头像图标
         avatar_icon = QLabel(user.get('avatar', '👤'), avatar_container)
-        avatar_icon.setGeometry(0, 0, 44, 44)
+        avatar_icon.setGeometry(0, 0, 40, 40)
         avatar_icon.setAlignment(Qt.AlignCenter)
-        avatar_icon.setStyleSheet("font-size: 22px; background: transparent;")
+        avatar_icon.setStyleSheet("font-size: 20px; background: transparent;")
         
         # 在线状态点 - 精确定位
         if is_online:
             status_dot = QFrame(avatar_container)
-            status_dot.setGeometry(32, 32, 12, 12)
+            status_dot.setGeometry(28, 28, 12, 12)
             status_dot.setStyleSheet(f"""
                 background-color: {t.success};
                 border: 2px solid white;
@@ -61,9 +61,10 @@ class FriendItem(QWidget):
         layout.addWidget(avatar_container)
         
         # 信息区
-        info_layout = QVBoxLayout()
+        info_widget = QWidget()
+        info_layout = QVBoxLayout(info_widget)
+        info_layout.setContentsMargins(0, 0, 0, 0)
         info_layout.setSpacing(2)
-        info_layout.setAlignment(Qt.AlignVCenter)
         
         # 昵称
         name = QLabel(user.get('nickname', 'Unknown'))
@@ -74,13 +75,16 @@ class FriendItem(QWidget):
         """)
         info_layout.addWidget(name)
         
-        # 状态
-        status_text = "🟢 在线" if is_online else "⚫ 离线"
-        status_color = t.success if is_online else t.text_caption
-        
+        # 状态文字
         if user.get('in_game'):
             status_text = f"🎮 {user.get('current_game', '游戏中')}"
             status_color = t.secondary
+        elif is_online:
+            status_text = "🟢 在线"
+            status_color = t.success
+        else:
+            status_text = "⚫ 离线"
+            status_color = t.text_caption
         
         status = QLabel(status_text)
         status.setStyleSheet(f"""
@@ -89,7 +93,7 @@ class FriendItem(QWidget):
         """)
         info_layout.addWidget(status)
         
-        layout.addLayout(info_layout, 1)
+        layout.addWidget(info_widget, 1)
         
         # 邀请按钮
         if is_online:
@@ -141,26 +145,6 @@ class FriendsWidget(QWidget):
         self.online_count.setStyleSheet(f"font-size: 12px; color: {t.success}; font-weight: 500;")
         header.addWidget(self.online_count)
         
-        # 添加按钮
-        add_btn = QPushButton("+")
-        add_btn.setFixedSize(24, 24)
-        add_btn.setCursor(Qt.PointingHandCursor)
-        add_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {t.bg_base};
-                color: {t.text_caption};
-                border: none;
-                border-radius: 6px;
-                font-size: 16px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: {t.bg_hover};
-                color: {t.primary};
-            }}
-        """)
-        header.addWidget(add_btn)
-        
         layout.addLayout(header)
         
         # 搜索框
@@ -169,14 +153,21 @@ class FriendsWidget(QWidget):
         self.search_input.setFixedHeight(36)
         layout.addWidget(self.search_input)
         
+        # 滚动区域
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        
         # 好友列表容器
         self.container = QWidget()
         self.list_layout = QVBoxLayout(self.container)
         self.list_layout.setContentsMargins(0, 4, 0, 0)
-        self.list_layout.setSpacing(4)
+        self.list_layout.setSpacing(2)
         self.list_layout.addStretch()
         
-        layout.addWidget(self.container, 1)
+        scroll.setWidget(self.container)
+        layout.addWidget(scroll, 1)
 
     def set_friends(self, friends: List[Dict[str, Any]]):
         self.friends_data = friends
@@ -203,6 +194,8 @@ class FriendsWidget(QWidget):
         
         self.online_count.setText(f"{len(online)} 在线")
         
+        idx = 0
+        
         # 显示在线好友
         if online:
             online_header = QLabel("在线")
@@ -212,12 +205,14 @@ class FriendsWidget(QWidget):
                 padding: 8px 12px 4px;
                 font-weight: 600;
             """)
-            self.list_layout.insertWidget(self.list_layout.count() - 1, online_header)
+            self.list_layout.insertWidget(idx, online_header)
+            idx += 1
             
             for f in online:
                 item = FriendItem(f)
                 item.invite_clicked.connect(self.invite_friend.emit)
-                self.list_layout.insertWidget(self.list_layout.count() - 1, item)
+                self.list_layout.insertWidget(idx, item)
+                idx += 1
         
         # 显示离线好友
         if offline:
@@ -228,8 +223,10 @@ class FriendsWidget(QWidget):
                 padding: 12px 12px 4px;
                 font-weight: 600;
             """)
-            self.list_layout.insertWidget(self.list_layout.count() - 1, offline_header)
+            self.list_layout.insertWidget(idx, offline_header)
+            idx += 1
             
             for f in offline:
                 item = FriendItem(f)
-                self.list_layout.insertWidget(self.list_layout.count() - 1, item)
+                self.list_layout.insertWidget(idx, item)
+                idx += 1
