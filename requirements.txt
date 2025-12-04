@@ -1,0 +1,39 @@
+# Aether Party - 跨平台好友对战大厅
+# Python 3.11+
+
+# UI 框架
+PySide6>=6.6.0
+
+# 网络
+websockets>=12.0
+pydantic>=2.5.0
+
+# 2D 游戏引擎
+arcade>=2.6.17
+
+# 3D 游戏引擎（可选，用于赛车模块）
+# panda3d>=1.10.14
+
+# 语音（可选）
+# aiortc>=1.6.0
+
+# 异步支持
+uvloop>=0.19.0; sys_platform != 'win32'
+
+# 数据存储
+aiosqlite>=0.19.0
+
+# 安全
+PyJWT>=2.8.0
+cryptography>=41.0.0
+
+# 开发工具
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+mypy>=1.7.0
+ruff>=0.1.6
+
+# 打包
+pyinstaller>=6.2.0
+
