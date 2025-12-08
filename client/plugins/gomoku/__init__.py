@@ -19,7 +19,20 @@ def __getattr__(name: str):
     """
 
     if name == "GomokuWidget":
-        from .widget import GomokuWidget  # 本地导入以延迟依赖解析
+        try:
+            from .widget import GomokuWidget  # 本地导入以延迟依赖解析
+        except ImportError as exc:  # pragma: no cover - 依赖缺失时提示
+            missing_dep = (
+                "无法加载 GomokuWidget：缺少 GUI 依赖 (PySide6/Qt)。"
+                " 请在支持图形界面的环境中安装相关库。"
+            )
+            raise ImportError(missing_dep) from exc
 
         return GomokuWidget
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+def __dir__():
+    """使动态属性在自动补全/dir 中可见。"""
+
+    return sorted(set(globals().keys()) | {"GomokuWidget"})
