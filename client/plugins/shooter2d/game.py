@@ -100,15 +100,51 @@ class Shooter2DPlugin(GamePlugin):
         """加载游戏资源"""
         self._context = context
         self._state = GameState.LOADING
-        
+
         if context.local_user:
             self._local_player_id = context.local_user.user_id
-        
-        # TODO: 加载纹理、音效等资源
-        
+
+        # 初始化地图元素（简易示例，正式资源由宿主引擎加载）
+        self._load_map_obstacles()
+        self._spawn_players()
+
         self._state = GameState.READY
         self._is_loaded = True
         return True
+
+    def _load_map_obstacles(self) -> None:
+        """根据配置生成障碍物，占位实现避免空场景。"""
+        self._obstacles.clear()
+        config = (self._context.config.get("shooter2d", {}) if self._context else {})
+        obstacle_defs = config.get("obstacles") or [
+            {"x": self.MAP_WIDTH / 3, "y": self.MAP_HEIGHT / 2, "w": 120, "h": 60},
+            {"x": self.MAP_WIDTH * 0.7, "y": self.MAP_HEIGHT * 0.35, "w": 80, "h": 120},
+            {"x": self.MAP_WIDTH * 0.55, "y": self.MAP_HEIGHT * 0.75, "w": 100, "h": 80},
+        ]
+
+        for obs in obstacle_defs:
+            self._obstacles.append(
+                Obstacle(
+                    position=Vector2(float(obs.get("x", 0)), float(obs.get("y", 0))),
+                    width=float(obs.get("w", 50)),
+                    height=float(obs.get("h", 50)),
+                )
+            )
+
+    def _spawn_players(self) -> None:
+        """为已在房间的玩家分配初始位置。"""
+        if not self._players:
+            return
+
+        spawn_points = [
+            Vector2(self.MAP_WIDTH * 0.25, self.MAP_HEIGHT * 0.25),
+            Vector2(self.MAP_WIDTH * 0.75, self.MAP_HEIGHT * 0.25),
+            Vector2(self.MAP_WIDTH * 0.25, self.MAP_HEIGHT * 0.75),
+            Vector2(self.MAP_WIDTH * 0.75, self.MAP_HEIGHT * 0.75),
+        ]
+
+        for idx, player in enumerate(self._players.values()):
+            player.position = spawn_points[idx % len(spawn_points)]
     
     def join_room(self, room_state: RoomState) -> bool:
         """加入房间"""
@@ -122,7 +158,9 @@ class Shooter2DPlugin(GamePlugin):
                 user_id=player_info.user_id,
                 team_id=player_info.team_id or 0
             )
-        
+
+        self._spawn_players()
+
         return True
     
     def start_game(self) -> bool:
@@ -388,6 +426,15 @@ class Shooter2DPlugin(GamePlugin):
                     "owner_id": b.owner_id
                 }
                 for b in self._bullets.values()
+            ],
+            "obstacles": [
+                {
+                    "x": obs.position.x,
+                    "y": obs.position.y,
+                    "w": obs.width,
+                    "h": obs.height,
+                }
+                for obs in self._obstacles
             ],
             "local_player_id": self._local_player_id,
             "frame_id": self._frame_id

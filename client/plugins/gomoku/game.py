@@ -111,7 +111,11 @@ class GomokuPlugin(GamePlugin):
                 self._board[row][col] = player
                 self._history.append((row, col, player))
                 self._last_move = (row, col)
-                self._current_player = 3 - player  # 切换玩家
+                if self._check_winner(row, col, player):
+                    self._winner = player
+                    self._state = GameState.FINISHED
+                else:
+                    self._current_player = 3 - player  # 切换玩家
     
     def place_stone(self, row: int, col: int) -> bool:
         """
@@ -150,9 +154,57 @@ class GomokuPlugin(GamePlugin):
     
     def on_mouse_down(self, button: int, x: int, y: int) -> None:
         """处理鼠标点击"""
-        if button == 1:  # 左键
-            # 将屏幕坐标转换为棋盘坐标（由 UI 层实现）
-            pass
+        if button == 1 and self._state == GameState.PLAYING:
+            row, col = self._screen_to_board(x, y)
+            if row is not None and col is not None:
+                self.place_stone(row, col)
+
+    def _screen_to_board(self, x: int, y: int) -> Tuple[Optional[int], Optional[int]]:
+        """将屏幕坐标转换为棋盘坐标。
+
+        约定默认棋盘绘制：
+        - 边距 20px
+        - 单元格大小 40px
+        这些值可通过 `context.config['gomoku']` 覆盖（keys: margin, cell_size）。
+        """
+
+        config = (self._context.config.get("gomoku", {}) if self._context else {})
+        margin = int(config.get("margin", 20))
+        cell_size = int(config.get("cell_size", 40))
+
+        # 计算落点所在格子
+        if x < margin or y < margin:
+            return None, None
+
+        col = (x - margin) // cell_size
+        row = (y - margin) // cell_size
+
+        if 0 <= row < self.BOARD_SIZE and 0 <= col < self.BOARD_SIZE:
+            return int(row), int(col)
+        return None, None
+
+    def _check_winner(self, row: int, col: int, player: int) -> bool:
+        """检查当前落子是否形成连五。"""
+
+        def count_direction(dr: int, dc: int) -> int:
+            r, c = row + dr, col + dc
+            count = 0
+            while 0 <= r < self.BOARD_SIZE and 0 <= c < self.BOARD_SIZE:
+                if self._board[r][c] != player:
+                    break
+                count += 1
+                r += dr
+                c += dc
+            return count
+
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+        for dr, dc in directions:
+            total = 1  # 包含当前落子
+            total += count_direction(dr, dc)
+            total += count_direction(-dr, -dc)
+            if total >= 5:
+                return True
+        return False
     
     def get_board_state(self) -> Dict[str, Any]:
         """获取棋盘状态供 UI 层使用"""
