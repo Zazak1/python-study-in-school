@@ -200,7 +200,21 @@ class WerewolfPlugin(GamePlugin):
     
     def render(self, surface):
         """渲染（由 UI 层处理）"""
-        pass
+        return {
+            "phase": self.state.phase.name if self.state.phase else "UNKNOWN",
+            "day": self.state.day_count,
+            "players": {
+                uid: {
+                    "role": (p.role.value if p.role else None),
+                    "alive": p.is_alive,
+                    "protected": p.is_protected,
+                }
+                for uid, p in self.state.players.items()
+            },
+            "timer": self.state.timer,
+            "votes": self.state.votes,
+            "my_role": self.my_role.value if self.my_role else None,
+        }
     
     def dispose(self):
         """释放资源"""

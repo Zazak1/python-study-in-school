@@ -282,7 +282,30 @@ class RacingPlugin(GamePlugin):
     
     def render(self, surface):
         """渲染（由 3D 引擎处理）"""
-        pass
+        return {
+            "state": self.state.name if self.state else "WAITING",
+            "race_time": self.race_time,
+            "countdown": self.countdown,
+            "cars": [
+                {
+                    "user_id": c.user_id,
+                    "nickname": c.nickname,
+                    "pos": {"x": c.position.x, "y": c.position.y, "z": c.position.z},
+                    "vel": {"x": c.velocity.x, "y": c.velocity.y, "z": c.velocity.z},
+                    "rotation": c.rotation,
+                    "lap": c.lap,
+                    "checkpoint": c.checkpoint,
+                    "rank": c.rank,
+                    "finished": c.is_finished,
+                }
+                for c in self.cars.values()
+            ],
+            "track": {
+                "name": self.track.name if self.track else "default",
+                "total_laps": self.track.total_laps if self.track else 3,
+                "checkpoints": self.track.checkpoints if self.track else [],
+            },
+        }
     
     def dispose(self):
         """释放资源"""

@@ -82,8 +82,8 @@ class GomokuPlugin(GamePlugin):
     
     def render(self, surface: Any) -> None:
         """渲染棋盘（由 UI 层调用）"""
-        # 返回当前游戏状态供 UI 层渲染
-        pass
+        # 返回当前棋盘状态供 UI 层渲染（surface 由上层决定如何绘制）
+        return self.get_board_state()
     
     def on_network(self, event: NetworkEvent) -> None:
         """处理网络事件"""

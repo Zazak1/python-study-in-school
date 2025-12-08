@@ -3,11 +3,18 @@
 """
 from .base import GameLogic
 from .gomoku import GomokuGame
+from .shooter2d import Shooter2DGame
+from .werewolf import WerewolfGame
+from .monopoly import MonopolyGame
+from .racing import RacingGame
 
 # 游戏逻辑映射
 GAME_LOGIC_MAP = {
     'gomoku': GomokuGame,
-    # 其他游戏后续添加
+    'shooter2d': Shooter2DGame,
+    'werewolf': WerewolfGame,
+    'monopoly': MonopolyGame,
+    'racing': RacingGame,
 }
 
 # 延迟导入 GameService 避免循环引用

@@ -9,6 +9,7 @@ from .protocol import (
     GameEvent, ChatMessage
 )
 from .auth import AuthManager
+from .ws_manager import WebSocketManager
 
 __all__ = [
     'WebSocketClient', 'ConnectionState', 'Message',
@@ -16,5 +17,5 @@ __all__ = [
     'LoginRequest', 'LoginResponse',
     'JoinRoomRequest', 'RoomUpdate',
     'GameEvent', 'ChatMessage',
-    'AuthManager'
+    'AuthManager', 'WebSocketManager'
 ]

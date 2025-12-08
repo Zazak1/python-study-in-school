@@ -2,6 +2,9 @@
 主窗口
 """
 import sys
+import asyncio
+import random
+import time
 from PySide6.QtWidgets import (
     QMainWindow, QStackedWidget, QWidget, QVBoxLayout,
     QMessageBox, QApplication
@@ -11,6 +14,7 @@ from PySide6.QtGui import QIcon, QFontDatabase, QFont
 
 from .styles import get_stylesheet, DARK_THEME
 from .widgets import LoginWidget, LobbyWidget
+from client.net import AuthManager, WebSocketManager, Message
 
 
 class MainWindow(QMainWindow):
@@ -18,9 +22,19 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
+        # 网络/认证
+        self.auth = AuthManager()
+        self.ws_manager = None
+        self._game_update_timer = QTimer()
+        self._game_update_timer.setInterval(1000)
+        self._game_update_timer.timeout.connect(self._on_mock_game_tick)
+        self._frame_counter = 0
+        self._current_game_id = None
+        
         self.setup_window()
         self.setup_ui()
         self.connect_signals()
+        self._init_network()
     
     def setup_window(self):
         """设置窗口属性"""
@@ -64,6 +78,45 @@ class MainWindow(QMainWindow):
         self.lobby_widget.quick_match_requested.connect(self.on_quick_match)
         self.lobby_widget.logout_requested.connect(self.on_logout)
     
+    # ========== 网络与认证 ==========
+    def _init_network(self):
+        """初始化 WebSocket 管理器并绑定回调"""
+        # 连接回调
+        def on_connect():
+            self.lobby_widget.set_connection_status(True, "已连接服务器")
+        
+        def on_disconnect():
+            self.lobby_widget.set_connection_status(False, "连接断开，尝试重连")
+        
+        def on_message(msg: Message):
+            # 演示：将消息展示到游戏画面区域
+            self.lobby_widget.set_game_render_data("服务器消息", {
+                "type": msg.type,
+                "payload": msg.payload,
+                "msg_id": msg.msg_id,
+                "timestamp": msg.timestamp
+            })
+        
+        def on_binary(data: bytes):
+            self.lobby_widget.set_game_render_data("二进制数据", {"length": len(data)})
+        
+        ws_url = "ws://0.0.0.0:8765/ws"
+        self.ws_manager = WebSocketManager(
+            url=ws_url,
+            auth=self.auth,
+            on_message=on_message,
+            on_binary=on_binary,
+            on_connect=on_connect,
+            on_disconnect=on_disconnect,
+        )
+        
+        async def mock_refresh(refresh_token: str):
+            # 模拟刷新接口：立即返回新 token
+            await asyncio.sleep(0)
+            return {"token": f"{refresh_token}_refreshed", "expires_in": 3600}
+        
+        self.auth.set_refresh_handler(mock_refresh)
+    
     # ========== 登录相关 ==========
     
     def on_login(self, username: str, password: str, remember: bool):
@@ -80,12 +133,33 @@ class MainWindow(QMainWindow):
         """完成登录"""
         self.login_widget.set_loading(False)
         
+        # Mock 登录响应，后续可替换为真实接口
+        login_resp = {
+            "user_id": f"user_{username}",
+            "username": username,
+            "nickname": username,
+            "avatar": "😎",
+            "token": "dummy-token",
+            "refresh_token": "dummy-refresh",
+            "expires_in": 3600,
+            "coins": 1680,
+            "level": 1
+        }
+        self.auth.login(login_resp)
+        
         # 更新大厅用户信息
         self.lobby_widget.profile_bar.set_user({
             'nickname': username,
             'avatar': '😎',
             'coins': 1680
         })
+        
+        # 建立 WebSocket 连接（使用最新 token）
+        if self.ws_manager:
+            self.ws_manager.connect()
+        
+        # 启动一个示例的本地渲染数据流（未真正连接服务器时的占位）
+        self._start_mock_game_feed("gomoku", room_id="demo_room")
         
         # 切换到大厅
         self.stack.setCurrentWidget(self.lobby_widget)
@@ -115,6 +189,13 @@ class MainWindow(QMainWindow):
             self.login_widget.username_input.clear()
             self.login_widget.password_input.clear()
             
+            # 断开 WS，清除会话
+            if self.ws_manager:
+                self.ws_manager.disconnect()
+            self.auth.logout()
+            self.lobby_widget.set_connection_status(False, "未连接")
+            self._stop_mock_game_feed()
+            
             # 切换到登录页面
             self.stack.setCurrentWidget(self.login_widget)
             print("[退出登录]")
@@ -133,6 +214,12 @@ class MainWindow(QMainWindow):
         game_name = game_names.get(game_id, game_id)
         
         print(f"[选择游戏] {game_name}")
+        # 更新游戏画面占位，等待实际房间/服务器数据接入
+        if hasattr(self, "lobby_widget"):
+            self.lobby_widget.set_game_render_data(
+                f"预览：{game_name}",
+                {"game": game_id, "status": "等待房间或服务器同步"}
+            )
         
         QMessageBox.information(
             self,
@@ -145,6 +232,14 @@ class MainWindow(QMainWindow):
     def on_room_joined(self, room_id: str):
         """处理加入房间"""
         print(f"[加入房间] ID: {room_id}")
+        
+        if hasattr(self, "lobby_widget"):
+            self.lobby_widget.set_game_render_data(
+                "房间同步中",
+                {"room_id": room_id, "status": "等待服务器状态"}
+            )
+        # 启动模拟的五子棋数据流
+        self._start_mock_game_feed("gomoku", room_id=room_id)
         
         QMessageBox.information(
             self,
@@ -171,6 +266,14 @@ class MainWindow(QMainWindow):
         """处理快速匹配"""
         print("[快速匹配]")
         
+        if hasattr(self, "lobby_widget"):
+            self.lobby_widget.set_game_render_data(
+                "匹配中",
+                {"status": "正在匹配对手..."}
+            )
+        # 启动模拟的射击数据流
+        self._start_mock_game_feed("shooter2d", room_id="match_demo")
+        
         QMessageBox.information(
             self,
             "⚡ 快速匹配",
@@ -178,8 +281,67 @@ class MainWindow(QMainWindow):
             "完整版本将自动为你匹配合适的对手。"
         )
     
+    # ========== 本地演示渲染流 ==========
+    def _start_mock_game_feed(self, game_id: str, room_id: str):
+        """启动本地模拟的游戏渲染数据流"""
+        self._current_game_id = game_id
+        self._frame_counter = 0
+        self._game_update_timer.start()
+    
+    def _stop_mock_game_feed(self):
+        self._game_update_timer.stop()
+        self._current_game_id = None
+        self._frame_counter = 0
+    
+    def _on_mock_game_tick(self):
+        if not self._current_game_id:
+            return
+        
+        self._frame_counter += 1
+        now_ms = int(time.time() * 1000)
+        
+        if self._current_game_id == "gomoku":
+            data = {
+                "game": "gomoku",
+                "frame": self._frame_counter,
+                "board_size": 15,
+                "last_move": [7, (7 + self._frame_counter) % 15],
+                "current_player": "black" if self._frame_counter % 2 else "white",
+                "status": "本地演示数据",
+                "timestamp_ms": now_ms,
+            }
+        elif self._current_game_id == "shooter2d":
+            data = {
+                "game": "shooter2d",
+                "frame": self._frame_counter,
+                "players": [
+                    {"user_id": "p1", "x": 100 + 5 * self._frame_counter, "y": 200, "hp": 90},
+                    {"user_id": "p2", "x": 400, "y": 300, "hp": 100},
+                ],
+                "bullets": [
+                    {"id": "b1", "x": 120 + 10 * self._frame_counter, "y": 210},
+                ],
+                "status": "本地演示数据",
+                "timestamp_ms": now_ms,
+            }
+        else:
+            data = {
+                "game": self._current_game_id,
+                "frame": self._frame_counter,
+                "timestamp_ms": now_ms,
+                "status": "本地演示数据",
+            }
+        
+        self.lobby_widget.set_game_render_data(f"演示：{self._current_game_id}", data)
+    
     def closeEvent(self, event):
         """窗口关闭事件"""
+        if self.ws_manager:
+            try:
+                self.ws_manager.shutdown()
+            except Exception:
+                pass
+        self._stop_mock_game_feed()
         reply = QMessageBox.question(
             self,
             "退出游戏",

@@ -2,7 +2,7 @@
 大厅主界面组件 - 修复布局
 """
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QGraphicsDropShadowEffect,
     QScrollArea
 )
@@ -13,6 +13,7 @@ from .game_card import GameCard
 from .friends_widget import FriendsWidget
 from .rooms_widget import RoomsWidget
 from .chat_widget import ChatWidget
+from .game_view import GameViewWidget
 from ..styles.theme import CURRENT_THEME as t
 
 
@@ -247,7 +248,28 @@ class LobbyWidget(QWidget):
         
         left_layout.addWidget(rooms_card, 1)
         
+        # 中间：游戏画面（可嵌入渲染，当前显示 render 数据）
+        game_panel = QFrame()
+        game_panel.setStyleSheet(f"""
+            QFrame {{
+                background-color: {t.bg_card};
+                border: 1px solid {t.border_light};
+                border-radius: 16px;
+            }}
+        """)
+        game_layout = QVBoxLayout(game_panel)
+        game_layout.setContentsMargins(16, 16, 16, 16)
+        game_layout.setSpacing(12)
+        
+        game_title = QLabel("游戏画面")
+        game_title.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {t.text_display};")
+        game_layout.addWidget(game_title)
+        
+        self.game_view = GameViewWidget()
+        game_layout.addWidget(self.game_view, 1)
+        
         content_layout.addWidget(left_panel, 1)
+        content_layout.addWidget(game_panel, 1)
         
         # 右侧：好友 + 聊天
         right_panel = QWidget()
@@ -365,6 +387,17 @@ class LobbyWidget(QWidget):
             'content': '我要开一局射击，来吗？',
             'time': '14:31'
         })
+        
+        # 演示：填充一个示例渲染数据
+        demo_state = {
+            "game": "gomoku",
+            "board_size": 15,
+            "current_player": "black",
+            "last_move": [7, 7],
+            "history_count": 12,
+            "status": "等待开始（演示数据）"
+        }
+        self.set_game_render_data("演示：五子棋", demo_state)
     
     def set_connection_status(self, connected: bool, text: str = ""):
         if connected:
@@ -373,3 +406,8 @@ class LobbyWidget(QWidget):
         else:
             self.connection_status.setText(f"🔴 {text or '连接断开'}")
             self.connection_status.setStyleSheet(f"font-size: 11px; color: {t.error};")
+
+    def set_game_render_data(self, title: str, data: dict):
+        """更新游戏画面展示（接收插件 render 输出）"""
+        if hasattr(self, "game_view"):
+            self.game_view.set_render_data(title, data)

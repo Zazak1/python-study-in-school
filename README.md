@@ -66,9 +66,24 @@ pip install -e ".[dev]"
 ### 运行
 
 ```bash
+# 启动服务器
+python -m server.main
+
+# 或使用 python3
+python3 -m server.main
+
 # 启动客户端（开发中）
 python -m client.launcher.main
 ```
+
+**服务器配置说明：**
+- 默认监听地址：`ws://0.0.0.0:8765`
+- 可通过环境变量配置：
+  - `SERVER_HOST`: 服务器地址（默认：0.0.0.0）
+  - `SERVER_PORT`: 端口号（默认：8765）
+  - `DEBUG`: 调试模式（默认：true）
+  - `JWT_SECRET`: JWT密钥（生产环境请修改）
+  - `DATABASE_URL`: 数据库URL（默认：sqlite:///aether_party.db）
 
 ## 🎮 游戏模块
 

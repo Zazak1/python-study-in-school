@@ -225,8 +225,8 @@ class Shooter2DPlugin(GamePlugin):
     
     def render(self, surface: Any) -> None:
         """渲染当前帧"""
-        # 渲染逻辑由 arcade/UI 层实现
-        pass
+        # 返回当前状态供 UI 层渲染（arcade/Qt 嵌入可复用）
+        return self.get_game_state()
     
     def on_network(self, event: NetworkEvent) -> None:
         """处理网络事件"""

@@ -7,6 +7,7 @@ from .game_card import GameCard
 from .rooms_widget import RoomsWidget, RoomCard
 from .friends_widget import FriendsWidget, FriendItem
 from .chat_widget import ChatWidget
+from .game_view import GameViewWidget
 from .notification_widget import NotificationCenter, NotificationItem, ToastNotification
 from .create_room_dialog import CreateRoomDialog, GameTypeButton
 from .settings_widget import SettingsWidget, SettingSection, SettingRow
@@ -18,6 +19,7 @@ __all__ = [
     'RoomsWidget', 'RoomCard',
     'FriendsWidget', 'FriendItem',
     'ChatWidget',
+    'GameViewWidget',
     'NotificationCenter', 'NotificationItem', 'ToastNotification',
     'CreateRoomDialog', 'GameTypeButton',
     'SettingsWidget', 'SettingSection', 'SettingRow',

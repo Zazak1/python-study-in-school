@@ -215,7 +215,33 @@ class MonopolyPlugin(GamePlugin):
     
     def render(self, surface):
         """渲染（由 UI 层处理）"""
-        pass
+        return {
+            "players": {
+                uid: {
+                    "pos": p.position,
+                    "money": p.money,
+                    "in_jail": p.in_jail,
+                    "bankrupt": p.is_bankrupt,
+                    "properties": p.properties,
+                }
+                for uid, p in self.state.players.items()
+            },
+            "tiles": [
+                {
+                    "id": t.id,
+                    "type": t.type.value,
+                    "name": t.name,
+                    "owner_id": t.owner_id,
+                    "level": t.level,
+                    "price": t.price,
+                }
+                for t in self.state.tiles
+            ],
+            "current_turn": self.state.current_turn,
+            "current_player": self.state.current_player,
+            "phase": self.state.phase,
+            "dice": self.state.dice,
+        }
     
     def dispose(self):
         """释放资源"""

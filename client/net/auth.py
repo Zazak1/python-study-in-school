@@ -40,9 +40,11 @@ class UserSession:
 class AuthManager:
     """认证管理器"""
     
-    def __init__(self, secret_key: str = ""):
+    def __init__(self, secret_key: str = "", refresh_handler: Optional[Any] = None):
         self.secret_key = secret_key or "aether-party-secret"
         self.session: Optional[UserSession] = None
+        # refresh_handler: async callable(refresh_token) -> Dict | None
+        self._refresh_handler = refresh_handler
     
     @property
     def is_logged_in(self) -> bool:
@@ -86,6 +88,10 @@ class AuthManager:
     def logout(self):
         """登出"""
         self.session = None
+    
+    def set_refresh_handler(self, handler: Any) -> None:
+        """设置刷新 Token 的处理器（外部注入 HTTP/WS 调用）"""
+        self._refresh_handler = handler
     
     def get_auth_header(self) -> Dict[str, str]:
         """获取认证请求头"""
@@ -147,12 +153,22 @@ class AuthManager:
         if not self.session or not self.session.refresh_token:
             return False
         
-        # TODO: 调用服务器刷新接口
-        # response = await api.refresh_token(self.session.refresh_token)
-        # if response.success:
-        #     self.session.token = response.token
-        #     self.session.expires_at = time.time() + response.expires_in
-        #     return True
+        if not self._refresh_handler:
+            return False
+        
+        try:
+            response = await self._refresh_handler(self.session.refresh_token)
+            if not response:
+                return False
+            # 期望 response 包含 token / expires_in
+            new_token = response.get("token")
+            expires_in = response.get("expires_in", 3600)
+            if new_token:
+                self.session.token = new_token
+                self.session.expires_at = time.time() + expires_in
+                return True
+        except Exception as e:
+            print(f"[AuthManager] 刷新 token 失败: {e}")
         
         return False
     

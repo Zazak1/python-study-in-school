@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Optional
 from dataclasses import dataclass
 from enum import Enum, auto
 import logging
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class WebSocketClient:
         on_message: Optional[Callable[[Message], None]] = None,
         on_connect: Optional[Callable[[], None]] = None,
         on_disconnect: Optional[Callable[[], None]] = None,
+        on_binary: Optional[Callable[[bytes], None]] = None,
         heartbeat_interval: float = 30.0,
         reconnect_interval: float = 5.0,
         max_reconnect_attempts: int = 10
@@ -57,6 +59,7 @@ class WebSocketClient:
         self._on_message = on_message
         self._on_connect = on_connect
         self._on_disconnect = on_disconnect
+        self._on_binary = on_binary
         
         self._heartbeat_interval = heartbeat_interval
         self._reconnect_interval = reconnect_interval
@@ -73,6 +76,7 @@ class WebSocketClient:
         # 任务管理
         self._tasks: list = []
         self._running = False
+        self._token_provider: Optional[Callable[[], str]] = None
     
     @property
     def state(self) -> ConnectionState:
@@ -81,6 +85,10 @@ class WebSocketClient:
     @property
     def is_connected(self) -> bool:
         return self._state == ConnectionState.CONNECTED
+    
+    def set_token_provider(self, provider: Callable[[], str]) -> None:
+        """设置 token 提供器，用于重连时获取最新 token"""
+        self._token_provider = provider
     
     async def connect(self, token: str = "") -> bool:
         """
@@ -103,7 +111,8 @@ class WebSocketClient:
             import websockets
             
             # 构建连接 URL（带 token）
-            url = f"{self._url}?token={token}" if token else self._url
+            token_to_use = token or (self._token_provider() if self._token_provider else "")
+            url = f"{self._url}?token={token_to_use}" if token_to_use else self._url
             
             self._websocket = await websockets.connect(
                 url,
@@ -252,9 +261,14 @@ class WebSocketClient:
     
     def _handle_binary_message(self, data: bytes) -> None:
         """处理二进制消息"""
-        # 二进制消息通常用于帧同步数据
-        # 可以实现自定义的二进制协议
-        pass
+        # 二进制消息通常用于帧同步数据；交给上层处理
+        if self._on_binary:
+            try:
+                self._on_binary(data)
+            except Exception as e:
+                logger.error(f"Binary handler error: {e}")
+        else:
+            logger.debug(f"Received binary message, len={len(data)}")
     
     async def _reconnect(self) -> None:
         """重连逻辑"""
@@ -267,7 +281,11 @@ class WebSocketClient:
             self._reconnect_attempts += 1
             logger.info(f"Reconnecting... attempt {self._reconnect_attempts}")
             
-            await asyncio.sleep(self._reconnect_interval)
+            # 指数退避 + 少量随机抖动，避免雪崩
+            backoff = self._reconnect_interval * (2 ** (self._reconnect_attempts - 1))
+            backoff = min(backoff, 60)
+            jitter = random.uniform(0, 0.3 * backoff)
+            await asyncio.sleep(backoff + jitter)
             
             if await self.connect():
                 return
