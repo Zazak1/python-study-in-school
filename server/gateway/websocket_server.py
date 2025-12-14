@@ -21,7 +21,6 @@ class WebSocketServer:
         
         self._server: Optional[websockets.WebSocketServer] = None
         self._running = False
-        self._cleanup_task: Optional[asyncio.Task] = None
         
         # 注册到服务注册表
         ServiceRegistry.register("connection_manager", self.conn_manager)
@@ -33,9 +32,6 @@ class WebSocketServer:
         port = port or config.port
         
         self._running = True
-        
-        # 启动清理任务
-        self._cleanup_task = asyncio.create_task(self._cleanup_loop())
         
         # 启动 WebSocket 服务器
         self._server = await serve(
@@ -56,14 +52,6 @@ class WebSocketServer:
         """停止服务器"""
         print("[WebSocketServer] 正在关闭服务器...")
         self._running = False
-        
-        # 取消清理任务
-        if self._cleanup_task:
-            self._cleanup_task.cancel()
-            try:
-                await self._cleanup_task
-            except asyncio.CancelledError:
-                pass
         
         # 关闭所有连接
         for conn in list(self.conn_manager._connections.values()):
@@ -123,20 +111,6 @@ class WebSocketServer:
         # 移除连接
         await self.conn_manager.remove_connection(connection.connection_id)
     
-    async def _cleanup_loop(self):
-        """定期清理死连接"""
-        while self._running:
-            try:
-                await asyncio.sleep(60)  # 每分钟检查一次
-                cleaned = await self.conn_manager.cleanup_dead_connections(config.heartbeat_timeout)
-                if cleaned > 0:
-                    print(f"[WebSocketServer] 清理了 {cleaned} 个超时连接")
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                print(f"[WebSocketServer] 清理任务异常: {e}")
-
-
 async def run_server():
     """运行服务器"""
     server = WebSocketServer()
@@ -155,4 +129,3 @@ async def run_server():
 
 if __name__ == "__main__":
     asyncio.run(run_server())
-

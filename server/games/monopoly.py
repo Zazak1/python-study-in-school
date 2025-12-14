@@ -71,7 +71,6 @@ class MonopolyGame(GameLogic):
                 "position": player["position"],
                 "dice": (d1, d2),
                 "passed_start": passed_start,
-                "players": self._serialize_players(),
             }
             self.phase = "action"
             # 处理落点效果（税、租金）
@@ -80,11 +79,15 @@ class MonopolyGame(GameLogic):
                 msg.update(follow)
             self._check_bankrupt()
             self._check_win()
+
+            # 将结算后的状态一并下发，便于客户端保持一致（尤其是租金/破产释放地产）
+            msg["players"] = self._serialize_players()
+            msg["tiles"] = self._serialize_tiles()
             return True, {"success": True}, msg
 
         if action == "buy_property" and self.phase == "action":
             tile = self._get_tile(player["position"])
-            if not tile or tile["type"] != "property":
+            if not tile or tile["type"] not in ("property", "station"):
                 return False, {"error": "当前位置不可购买"}, None
             if tile.get("owner"):
                 return False, {"error": "已被购买"}, None
@@ -93,12 +96,16 @@ class MonopolyGame(GameLogic):
                 return False, {"error": "余额不足"}, None
             player["money"] -= price
             tile["owner"] = user_id
+            if tile["id"] not in player["properties"]:
+                player["properties"].append(tile["id"])
             msg = {
                 "type": "game_action",
                 "action": "buy_property",
                 "user_id": user_id,
                 "tile_id": tile["id"],
                 "money": player["money"],
+                "players": self._serialize_players(),
+                "tiles": self._serialize_tiles(),
             }
             self.phase = "end_turn"
             return True, {"success": True}, msg
@@ -117,6 +124,45 @@ class MonopolyGame(GameLogic):
     def update(self, dt: float):
         # 回合制，无需帧更新
         pass
+
+    def handle_disconnect(self, user_id: str) -> Dict[str, Any]:
+        """断线/离开：按破产处理并尽量推进回合，避免卡死。"""
+        player = self.players.get(user_id)
+        if not player or player.get("bankrupt"):
+            return {"disconnected": user_id}
+
+        # 断线视为破产：清空资金并释放地产
+        player["money"] = 0
+        player["bankrupt"] = True
+        player["properties"].clear()
+        for tile in self.tiles:
+            if tile.get("owner") == user_id:
+                tile["owner"] = None
+
+        # 若轮到其行动，直接推进到下一位有效玩家
+        if self.current_player == user_id:
+            self._next_player()
+        else:
+            # 防御：当前玩家可能此前已破产
+            cur = self.players.get(self.current_player or "")
+            if cur and cur.get("bankrupt"):
+                self._next_player()
+
+        self._check_win()
+
+        msg: Dict[str, Any] = {
+            "type": "game_action",
+            "action": "player_disconnected",
+            "user_id": user_id,
+            "phase": self.phase,
+            "current_player": self.current_player,
+            "players": self._serialize_players(),
+            "tiles": self._serialize_tiles(),
+        }
+        if self.is_finished:
+            msg["game_over"] = True
+            msg["winner"] = self.winner
+        return msg
 
     def get_state(self) -> Dict[str, Any]:
         return {
@@ -177,7 +223,7 @@ class MonopolyGame(GameLogic):
             amount = tile.get("amount", 0)
             player["money"] = max(0, player["money"] - amount)
             return {"tax": amount, "money": player["money"]}
-        if ttype == "property" and tile.get("owner") and tile["owner"] != player["user_id"]:
+        if ttype in ("property", "station") and tile.get("owner") and tile["owner"] != player["user_id"]:
             rent = tile.get("rent", [0])
             pay = rent[0] if rent else 0
             player["money"] = max(0, player["money"] - pay)
@@ -185,6 +231,23 @@ class MonopolyGame(GameLogic):
             if owner:
                 owner["money"] += pay
             return {"pay_rent": {"to": tile["owner"], "amount": pay}, "money": player["money"]}
+        if ttype in ("chance", "chest"):
+            # 简化卡牌：只做金钱增减
+            if ttype == "chance":
+                cards = [
+                    {"desc": "超速罚款", "amount": -300},
+                    {"desc": "车辆维修", "amount": -500},
+                    {"desc": "获得赞助", "amount": 600},
+                ]
+            else:
+                cards = [
+                    {"desc": "捡到红包", "amount": 200},
+                    {"desc": "中奖啦", "amount": 800},
+                    {"desc": "政府补贴", "amount": 500},
+                ]
+            card = random.choice(cards)
+            player["money"] = max(0, player["money"] + int(card["amount"]))
+            return {"card": {"type": ttype, **card}, "money": player["money"]}
         return None
 
     def _next_player(self):
@@ -247,4 +310,3 @@ class MonopolyGame(GameLogic):
             }
             for t in self.tiles
         ]
-

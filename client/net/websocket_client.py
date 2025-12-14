@@ -246,11 +246,27 @@ class WebSocketClient:
                     del self._pending_messages[ack_id]
                 return
             
+            msg_type = msg_data.get("type", "unknown")
+            reserved = {"type", "msg_id", "timestamp", "payload"}
+
+            # 兼容两种格式：
+            # 1) {type, payload:{...}}
+            # 2) {type, ...业务字段...}
+            payload = msg_data.get("payload")
+            if isinstance(payload, dict):
+                # 合并顶层业务字段（若服务端未用 payload 包裹）
+                for k, v in msg_data.items():
+                    if k in reserved:
+                        continue
+                    payload.setdefault(k, v)
+            else:
+                payload = {k: v for k, v in msg_data.items() if k not in reserved}
+
             message = Message(
-                type=msg_data.get("type", "unknown"),
-                payload=msg_data.get("payload", {}),
+                type=msg_type,
+                payload=payload,
                 msg_id=msg_data.get("msg_id", ""),
-                timestamp=msg_data.get("timestamp", 0)
+                timestamp=msg_data.get("timestamp", 0),
             )
             
             if self._on_message:
@@ -338,4 +354,3 @@ class ReliableChannel:
         """等待消息确认"""
         while msg_id in self._client._pending_messages:
             await asyncio.sleep(0.1)
-

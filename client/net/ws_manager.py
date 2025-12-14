@@ -45,6 +45,11 @@ class WebSocketManager:
         """发起连接（使用当前 token）"""
         self._run_coro(self._client.connect())
 
+    @property
+    def is_connected(self) -> bool:
+        """当前是否已连接（近似值；用于 UI 层决策）"""
+        return bool(getattr(self._client, "is_connected", False))
+
     def disconnect(self) -> None:
         """关闭连接"""
         self._run_coro(self._client.disconnect())
@@ -66,4 +71,3 @@ class WebSocketManager:
         self._loop.call_soon_threadsafe(self._loop.stop)
         if self._thread.is_alive():
             self._thread.join(timeout=2)
-

@@ -57,11 +57,11 @@ class Theme:
 
 # 2.0 升级版主题
 DESIGN_THEME = Theme(
-    # 品牌色：更现代的 Royal Blue
-    primary='#3B82F6',        # 标准蓝
-    primary_hover='#2563EB',  # 加深
-    primary_pressed='#1D4ED8',
-    primary_bg='#EFF6FF',     # 极淡蓝背景
+    # 品牌色：与 Web/Tailwind 风格对齐（indigo 系）
+    primary='#4F46E5',        # indigo-600
+    primary_hover='#6366F1',  # indigo-500
+    primary_pressed='#4338CA',# indigo-700
+    primary_bg='#EEF2FF',     # indigo-50
     
     # 功能色：低饱和度，不刺眼
     secondary='#F97316',      # 活力橙

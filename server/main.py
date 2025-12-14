@@ -11,6 +11,8 @@ from .gateway import WebSocketServer, ConnectionManager, MessageHandler
 from .gateway.handler import ServiceRegistry
 from .services import AuthService, UserService, RoomService, MatchService, ChatService
 from .games.game_service import GameService
+from .models.room import RoomState
+from .models.user import UserStatus
 
 
 class AetherPartyServer:
@@ -59,6 +61,8 @@ class AetherPartyServer:
         
         # 认证
         handler.register("login", self._handle_login)
+        handler.register("token_login", self._handle_token_login)
+        handler.register("register", self._handle_register)
         handler.register("logout", self._handle_logout)
         
         # 大厅
@@ -115,6 +119,107 @@ class AetherPartyServer:
                 "type": "room_list",
                 "rooms": rooms
             })
+            await self._resume_room_if_needed(connection, data["user_id"])
+
+    async def _handle_token_login(self, connection, message):
+        """处理 Token 登录（自动登录）"""
+        token = message.get("token", "")
+
+        success, data = await self.auth_service.token_login(connection, token)
+
+        await connection.send(
+            {
+                "type": "login_response",
+                "success": success,
+                **data,
+            }
+        )
+
+        if success:
+            friends = await self.user_service.get_friends(data["user_id"])
+            await connection.send({"type": "friend_list", "friends": friends})
+
+            rooms = self.room_service.get_rooms_list()
+            await connection.send({"type": "room_list", "rooms": rooms})
+            await self._resume_room_if_needed(connection, data["user_id"])
+
+    async def _resume_room_if_needed(self, connection, user_id: str):
+        """断线重连恢复：若用户仍在房间/对局中，恢复房间与游戏状态。"""
+        try:
+            room = self.room_service.find_room_by_user(user_id)
+        except Exception:
+            room = None
+
+        if not room:
+            return
+
+        if room.state in (RoomState.CLOSED, RoomState.FINISHED):
+            return
+
+        # 重新加入房间连接组，确保能收到 room/chat/game 广播
+        await self.conn_manager.join_room(connection.connection_id, room.room_id)
+
+        status = UserStatus.IN_GAME if room.state == RoomState.PLAYING else UserStatus.IN_ROOM
+        try:
+            await self.user_service.update_user_status(user_id, status, room.room_id, room.game_type)
+        except Exception:
+            pass
+
+        await connection.send(
+            {
+                "type": "room_resume",
+                "room_state": room.state.value,
+                "room": room.to_public_dict(),
+                "players": [
+                    {
+                        "user_id": p.user_id,
+                        "nickname": p.nickname,
+                        "avatar": p.avatar,
+                        "is_host": p.is_host,
+                        "is_ready": p.is_ready,
+                        "slot": p.slot,
+                    }
+                    for p in room.players
+                ],
+            }
+        )
+
+        if room.state != RoomState.PLAYING:
+            return
+
+        # 先发 game_start（让客户端创建插件），再发私有信息（狼人杀身份牌等）
+        state = await self.game_service.get_state(room.room_id)
+        if state is not None:
+            await connection.send({"type": "game_start", "game_type": room.game_type, **state})
+
+        private_init = self.game_service.get_private_init(room.room_id, user_id)
+        if private_init:
+            await connection.send(private_init)
+
+    async def _handle_register(self, connection, message):
+        """处理注册"""
+        username = message.get("username", "")
+        password = message.get("password", "")
+        nickname = message.get("nickname") or username
+
+        success, result = self.auth_service.register(username, password, nickname)
+
+        if success:
+            await connection.send(
+                {
+                    "type": "register_response",
+                    "success": True,
+                    "user_id": result,
+                }
+            )
+        else:
+            await connection.send(
+                {
+                    "type": "register_response",
+                    "success": False,
+                    "error": result,
+                }
+            )
     
     async def _handle_logout(self, connection, message):
         """处理登出"""
@@ -202,6 +307,18 @@ class AetherPartyServer:
             room_id = room_id or connection.user_session.current_room
         
         if room_id:
+            # 若在游戏中主动离开，按断线/弃权处理，避免对局卡死
+            try:
+                room = self.room_service.get_room(room_id)
+            except Exception:
+                room = None
+
+            if room and room.state == RoomState.PLAYING:
+                try:
+                    await self.room_service.handle_disconnect(connection.user_id, room_id)
+                except Exception:
+                    pass
+
             await self.room_service.leave_room(connection.user_id, room_id)
         
         await connection.send({
@@ -278,13 +395,16 @@ class AetherPartyServer:
         success, result = await self.game_service.process_action(
             connection.user_id, room_id, action, data
         )
-        
-        if not success:
-            await connection.send({
-                "type": "game_action_response",
-                "success": False,
-                **result
-            })
+
+        # 无论成功与否都回响应（用于私有结果：如狼人杀预言家查验）
+        response = {
+            "type": "game_action_response",
+            "success": success,
+            "request_action": action,
+        }
+        if isinstance(result, dict):
+            response.update(result)
+        await connection.send(response)
     
     async def _handle_chat_message(self, connection, message):
         """处理聊天消息"""

@@ -104,3 +104,10 @@ class GameLogic(ABC):
         """
         return self.get_state()
 
+    def get_private_init(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        获取仅发给单个玩家的初始化数据（如身份牌/私密信息）。
+
+        默认无私有数据。
+        """
+        return None

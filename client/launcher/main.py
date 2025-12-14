@@ -56,14 +56,12 @@ def main():
     
     # 列出可用插件
     logger.info("可用的游戏插件:")
-    from client.plugins.gomoku.game import GomokuPlugin
-    from client.plugins.shooter2d.game import Shooter2DPlugin
-    
-    plugins = [GomokuPlugin, Shooter2DPlugin]
-    for plugin_cls in plugins:
+    from client.plugins import GAME_PLUGINS
+
+    for game_id, plugin_cls in GAME_PLUGINS.items():
         plugin = plugin_cls()
         info = plugin.get_game_info()
-        logger.info(f"  - {info['name']} v{info['version']}: {info['description']}")
+        logger.info(f"  - {game_id} v{info['version']}: {info['description']}")
         logger.info(f"    玩家数: {info['min_players']}-{info['max_players']}")
     
     logger.info("")
@@ -76,4 +74,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

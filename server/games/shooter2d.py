@@ -62,6 +62,8 @@ class Shooter2DGame(GameLogic):
             if length > 0:
                 dx /= length
                 dy /= length
+                # 旋转采用角度制（与客户端一致）：0° 向右，90° 向下（屏幕坐标系 y 向下）
+                player["rotation"] = math.degrees(math.atan2(dy, dx))
             self.pending_inputs[user_id] = (dx, dy)
             return True, {"success": True}, None
 
@@ -74,6 +76,7 @@ class Shooter2DGame(GameLogic):
                 return False, {"error": "无效方向"}, None
             dir_x /= length
             dir_y /= length
+            player["rotation"] = math.degrees(math.atan2(dir_y, dir_x))
 
             bullet_id = str(uuid.uuid4())[:12]
             bullet = {
@@ -157,9 +160,9 @@ class Shooter2DGame(GameLogic):
         cx, cy = self.MAP_WIDTH / 2, self.MAP_HEIGHT / 2
 
         for idx, room_player in enumerate(self.room.players):
-            angle = 2 * math.pi * idx / count
-            x = cx + radius * math.cos(angle)
-            y = cy + radius * math.sin(angle)
+            angle_rad = 2 * math.pi * idx / count
+            x = cx + radius * math.cos(angle_rad)
+            y = cy + radius * math.sin(angle_rad)
             team = idx % 2  # 简单双队伍
 
             self.players[room_player.user_id] = {
@@ -169,7 +172,8 @@ class Shooter2DGame(GameLogic):
                 "y": y,
                 "vx": 0.0,
                 "vy": 0.0,
-                "rotation": angle,
+                # 角度制（与客户端一致）
+                "rotation": math.degrees(angle_rad),
                 "health": self.MAX_HEALTH,
                 "is_alive": True,
                 "team": team,
@@ -281,4 +285,3 @@ class Shooter2DGame(GameLogic):
             }
             for b in self.bullets.values()
         ]
-

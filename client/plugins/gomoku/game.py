@@ -37,6 +37,7 @@ class GomokuPlugin(GamePlugin):
         
         # 初始化棋盘
         self._reset_board()
+        self._current_player = 1
         
         self._state = GameState.READY
         self._is_loaded = True
@@ -89,18 +90,89 @@ class GomokuPlugin(GamePlugin):
         """处理网络事件"""
         if event.type == EventType.STATE:
             payload = event.payload
-            
-            if payload.get("action") == "move":
+
+            action = payload.get("action")
+
+            if action == "game_start":
+                # 断线恢复或观战：服务端可能携带完整棋盘状态
+                board = payload.get("board")
+                if isinstance(board, list) and board and isinstance(board[0], list):
+                    self._board = board
+
+                player_colors = payload.get("player_colors")
+                if isinstance(player_colors, dict):
+                    # 服务端以 user_id -> 颜色（1/2）为准
+                    if self._context and self._context.local_user:
+                        self._my_color = int(player_colors.get(self._context.local_user.user_id, self._my_color) or self._my_color)
+
+                    current_user = payload.get("current_player")
+                    if current_user and current_user in player_colors:
+                        self._current_player = int(player_colors.get(current_user) or self._current_player)
+
+                history = payload.get("history")
+                if isinstance(history, list):
+                    try:
+                        self._history = [tuple(x) for x in history]  # type: ignore[list-item]
+                    except Exception:
+                        pass
+                    if self._history:
+                        try:
+                            last = self._history[-1]
+                            self._last_move = (int(last[0]), int(last[1]))
+                        except Exception:
+                            pass
+
+                winner = payload.get("winner")
+                winner_color = payload.get("winner_color")
+                if isinstance(winner_color, int):
+                    self._winner = winner_color
+                elif isinstance(winner, str) and isinstance(player_colors, dict):
+                    try:
+                        self._winner = int(player_colors.get(winner) or 0)
+                    except Exception:
+                        self._winner = 0
+
+                if payload.get("is_finished") or payload.get("game_over"):
+                    self._state = GameState.FINISHED
+                else:
+                    self._state = GameState.PLAYING
+                return
+
+            if action == "move":
                 row = payload.get("row", 0)
                 col = payload.get("col", 0)
                 player = payload.get("player", 0)
                 self._apply_move(row, col, player)
+                
+                # 服务端广播可能附带下一手
+                next_player = payload.get("next_player")
+                if next_player:
+                    # 将 user_id 转换为颜色
+                    color_map = {
+                        p.user_id: (1 if i == 0 else 2)
+                        for i, p in enumerate(self._room_state.current_players)
+                    } if self._room_state else {}
+                    self._current_player = color_map.get(next_player, self._current_player)
             
-            elif payload.get("action") == "game_over":
-                self._winner = payload.get("winner", 0)
+            elif action in {"game_over", "surrender"}:
+                # winner 可能是 user_id；优先使用 winner_color
+                winner_color = payload.get("winner_color")
+                winner = payload.get("winner")
+                if isinstance(winner_color, int):
+                    self._winner = winner_color
+                elif isinstance(winner, str) and self._room_state:
+                    color_map = {
+                        p.user_id: (1 if i == 0 else 2)
+                        for i, p in enumerate(self._room_state.current_players)
+                    }
+                    self._winner = color_map.get(winner, 0)
+                elif isinstance(winner, int):
+                    self._winner = winner
+                else:
+                    self._winner = 0
                 self._state = GameState.FINISHED
             
-            elif payload.get("action") == "reset":
+            elif action == "reset":
                 self._reset_board()
                 self._state = GameState.PLAYING
     
@@ -112,6 +184,15 @@ class GomokuPlugin(GamePlugin):
                 self._history.append((row, col, player))
                 self._last_move = (row, col)
                 self._current_player = 3 - player  # 切换玩家
+                
+                # 本地检测胜负，保证无服务器时也能结束
+                winner = self._check_winner(row, col)
+                if winner:
+                    self._winner = winner
+                    self._state = GameState.FINISHED
+                elif self._is_board_full():
+                    self._winner = 0  # 平局
+                    self._state = GameState.FINISHED
     
     def place_stone(self, row: int, col: int) -> bool:
         """
@@ -146,6 +227,10 @@ class GomokuPlugin(GamePlugin):
             "col": col
         })
         
+        # 如果没有网络回调（本地演示模式），直接应用
+        if not self._context or not self._context.send_network:
+            self._apply_move(row, col, self._current_player)
+        
         return True
     
     def on_mouse_down(self, button: int, x: int, y: int) -> None:
@@ -153,6 +238,40 @@ class GomokuPlugin(GamePlugin):
         if button == 1:  # 左键
             # 将屏幕坐标转换为棋盘坐标（由 UI 层实现）
             pass
+    
+    def undo_last_move(self) -> bool:
+        """悔棋（仅本地或演示使用）"""
+        # 线上对局：不支持悔棋（避免与服务器状态不一致）
+        if self._context and self._context.send_network:
+            return False
+
+        if not self._history or self._state == GameState.FINISHED:
+            return False
+        
+        last_row, last_col, player = self._history.pop()
+        self._board[last_row][last_col] = 0
+        self._last_move = self._history[-1][:2] if self._history else None
+        self._current_player = player  # 还原到落子方
+        self._winner = 0
+        self._state = GameState.PLAYING
+        return True
+    
+    def surrender(self) -> None:
+        """认输（本地标记结果；服务器侧可扩展 action）"""
+        if self._state != GameState.PLAYING:
+            return
+
+        # 线上对局：发送到服务器，由服务器权威结束
+        if self._context and self._context.send_network:
+            self.send_input({"action": "surrender"})
+            # 本地乐观更新（服务器会很快广播 game_end）
+            self._winner = 3 - self._my_color if self._my_color else 0
+            self._state = GameState.FINISHED
+            return
+
+        # 演示模式：本地结束
+        self._winner = 3 - self._my_color if self._my_color else 0
+        self._state = GameState.FINISHED
     
     def get_board_state(self) -> Dict[str, Any]:
         """获取棋盘状态供 UI 层使用"""
@@ -173,3 +292,38 @@ class GomokuPlugin(GamePlugin):
         """是否轮到我"""
         return self._current_player == self._my_color and self._state == GameState.PLAYING
 
+    # ========== 本地工具 ==========
+    def _check_winner(self, row: int, col: int) -> int:
+        """本地判断是否五连"""
+        player = self._board[row][col]
+        if player == 0:
+            return 0
+        
+        directions = [
+            (0, 1),   # 水平
+            (1, 0),   # 垂直
+            (1, 1),   # 主对角
+            (1, -1),  # 副对角
+        ]
+        
+        for dr, dc in directions:
+            count = 1
+            # 正向
+            r, c = row + dr, col + dc
+            while 0 <= r < self.BOARD_SIZE and 0 <= c < self.BOARD_SIZE and self._board[r][c] == player:
+                count += 1
+                r += dr
+                c += dc
+            # 反向
+            r, c = row - dr, col - dc
+            while 0 <= r < self.BOARD_SIZE and 0 <= c < self.BOARD_SIZE and self._board[r][c] == player:
+                count += 1
+                r -= dr
+                c -= dc
+            if count >= 5:
+                return player
+        return 0
+
+    def _is_board_full(self) -> bool:
+        """是否棋盘已满"""
+        return all(cell != 0 for row in self._board for cell in row)

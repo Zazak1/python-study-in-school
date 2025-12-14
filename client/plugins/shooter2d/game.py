@@ -170,9 +170,9 @@ class Shooter2DPlugin(GamePlugin):
         # 计算移动方向
         move_dir = Vector2()
         if 'w' in self._keys_pressed or 'up' in self._keys_pressed:
-            move_dir.y += 1
-        if 's' in self._keys_pressed or 'down' in self._keys_pressed:
             move_dir.y -= 1
+        if 's' in self._keys_pressed or 'down' in self._keys_pressed:
+            move_dir.y += 1
         if 'a' in self._keys_pressed or 'left' in self._keys_pressed:
             move_dir.x -= 1
         if 'd' in self._keys_pressed or 'right' in self._keys_pressed:
@@ -245,13 +245,28 @@ class Shooter2DPlugin(GamePlugin):
         if "players" in payload:
             for player_data in payload["players"]:
                 user_id = player_data.get("user_id")
-                if user_id in self._players:
-                    player = self._players[user_id]
-                    player.position.x = player_data.get("x", player.position.x)
-                    player.position.y = player_data.get("y", player.position.y)
+                if not user_id:
+                    continue
+                if user_id not in self._players:
+                    self._players[user_id] = Player(user_id=user_id)
+                player = self._players[user_id]
+
+                player.position.x = player_data.get("x", player.position.x)
+                player.position.y = player_data.get("y", player.position.y)
+
+                # 旋转：对本地玩家优先使用鼠标预测，避免被服务器覆盖导致射击方向抖动
+                if user_id != self._local_player_id:
                     player.rotation = player_data.get("rotation", player.rotation)
-                    player.health = player_data.get("health", player.health)
-                    player.is_alive = player_data.get("is_alive", player.is_alive)
+
+                player.health = player_data.get("health", player.health)
+                player.is_alive = player_data.get("is_alive", player.is_alive)
+
+                team = player_data.get("team_id", player_data.get("team", player.team_id))
+                if team is not None:
+                    try:
+                        player.team_id = int(team)
+                    except Exception:
+                        pass
         
         # 更新子弹
         if "bullets" in payload:
@@ -376,6 +391,7 @@ class Shooter2DPlugin(GamePlugin):
                     "rotation": p.rotation,
                     "health": p.health,
                     "is_alive": p.is_alive,
+                    "team": p.team_id,
                     "is_local": p.user_id == self._local_player_id
                 }
                 for p in self._players.values()
@@ -392,4 +408,3 @@ class Shooter2DPlugin(GamePlugin):
             "local_player_id": self._local_player_id,
             "frame_id": self._frame_id
         }
-

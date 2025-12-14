@@ -76,7 +76,7 @@ GAME_CONFIGS: Dict[str, Dict[str, Any]] = {
         'name': '狼人杀',
         'min_players': 6,
         'max_players': 12,
-        'tick_rate': 0,
+        'tick_rate': 1,
         'sync_mode': 'state',  # 状态同步
     },
     'monopoly': {
@@ -94,4 +94,3 @@ GAME_CONFIGS: Dict[str, Dict[str, Any]] = {
         'sync_mode': 'frame',
     },
 }
-

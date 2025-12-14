@@ -1,305 +1,171 @@
 """
-狼人杀游戏插件
+狼人杀游戏插件（客户端，MVP）
+
+权威规则在服务器端 `server/games/werewolf.py`。
+客户端负责：
+- 展示阶段/倒计时/玩家存活
+- 发送 wolf_kill / seer_check / vote 等行动
+- 接收私有信息（角色、查验结果等）
 """
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, field
-from enum import Enum, auto
 
-from ..base import GamePlugin
+from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
-class GamePhase(Enum):
-    """游戏阶段"""
-    WAITING = auto()     # 等待
-    DEAL_CARDS = auto()  # 发牌
-    NIGHT = auto()       # 夜晚
-    DAY_DISCUSS = auto() # 白天讨论
-    DAY_VOTE = auto()    # 白天投票
-    EXILE = auto()       # 放逐
-    GAME_OVER = auto()   # 结束
-
-
-class Role(Enum):
-    """角色"""
-    VILLAGER = "村民"
-    WEREWOLF = "狼人"
-    SEER = "预言家"
-    WITCH = "女巫"
-    HUNTER = "猎人"
-    GUARD = "守卫"
-    IDIOT = "白痴"
+from ..base import EventType, GameContext, GamePlugin, GameState, NetworkEvent, RoomState
 
 
 @dataclass
-class Player:
-    """玩家"""
+class PlayerState:
     user_id: str
-    nickname: str
-    role: Optional[Role] = None
-    is_alive: bool = True
-    is_protected: bool = False
-    voted_for: Optional[str] = None  # 投票目标
-
-
-@dataclass
-class GameState:
-    """游戏状态"""
-    phase: GamePhase = GamePhase.WAITING
-    day_count: int = 0
-    players: Dict[str, Player] = field(default_factory=dict)
-    timer: int = 0  # 当前阶段剩余时间
-    
-    # 夜晚行动
-    wolf_target: Optional[str] = None
-    seer_target: Optional[str] = None
-    witch_save: bool = False
-    witch_poison: Optional[str] = None
-    guard_target: Optional[str] = None
-    
-    # 投票
-    votes: Dict[str, str] = field(default_factory=dict)  # voter -> target
+    alive: bool = True
 
 
 class WerewolfPlugin(GamePlugin):
-    """狼人杀游戏插件"""
-    
-    GAME_TYPE = "werewolf"
-    NAME = "狼人杀"
-    VERSION = "0.1.0"
-    
-    # 阶段时长（秒）
-    PHASE_TIMERS = {
-        GamePhase.DEAL_CARDS: 10,
-        GamePhase.NIGHT: 60,
-        GamePhase.DAY_DISCUSS: 120,
-        GamePhase.DAY_VOTE: 30,
-        GamePhase.EXILE: 10,
-    }
-    
+    PLUGIN_NAME = "werewolf"
+    PLUGIN_VERSION = "0.1.0"
+    PLUGIN_DESCRIPTION = "狼人杀（MVP：服务器权威阶段驱动）"
+    MIN_PLAYERS = 6
+    MAX_PLAYERS = 12
+    SUPPORTS_SPECTATE = True
+
     def __init__(self):
         super().__init__()
-        self.state = GameState()
-        self.my_role: Optional[Role] = None
-        
-        # 回调
-        self.on_phase_change = None
-        self.on_player_update = None
-        self.on_vote_result = None
-    
-    def get_game_info(self) -> Dict[str, Any]:
-        return {
-            "game_type": self.GAME_TYPE,
-            "name": self.NAME,
-            "version": self.VERSION,
-            "description": "经典狼人杀，支持多种角色配置",
-            "icon": "🐺",
-            "color": "#8B5CF6",
-            "min_players": 6,
-            "max_players": 12,
-            "features": ["语音聊天", "角色配置", "历史记录"]
-        }
-    
-    def load(self, context: Dict[str, Any]):
-        """加载游戏"""
+        self._players: Dict[str, PlayerState] = {}
+        self._phase: str = "waiting"  # night/day/vote/over
+        self._day: int = 0
+        self._timer: float = 0.0
+
+        self._my_user_id: str = ""
+        self._my_role: Optional[str] = None  # werewolf/seer/villager
+        self._seer_result: Optional[Dict[str, Any]] = None
+
+    def load(self, context: GameContext) -> bool:
+        self._context = context
+        self._state = GameState.LOADING
+
+        if context.local_user:
+            self._my_user_id = context.local_user.user_id
+
+        self._players.clear()
+        self._phase = "waiting"
+        self._day = 0
+        self._timer = 0.0
+        self._my_role = None
+        self._seer_result = None
+
+        self._state = GameState.READY
         self._is_loaded = True
-        
-        # 加载角色图标等资源
-        self.resources = context.get('resources', {})
-    
-    def join_room(self, room_state: Dict[str, Any]):
-        """加入房间"""
-        self._room_id = room_state.get('room_id')
-        
-        # 初始化玩家
-        for p in room_state.get('players', []):
-            self.state.players[p['user_id']] = Player(
-                user_id=p['user_id'],
-                nickname=p['nickname']
-            )
-    
-    def on_network(self, event: Dict[str, Any]):
-        """处理网络事件"""
-        event_type = event.get('type')
-        payload = event.get('payload', {})
-        
-        if event_type == 'phase_change':
-            self._handle_phase_change(payload)
-        
-        elif event_type == 'deal_role':
-            # 收到自己的角色
-            role_name = payload.get('role')
-            self.my_role = Role(role_name)
-        
-        elif event_type == 'night_result':
-            # 夜晚结果
-            self._handle_night_result(payload)
-        
-        elif event_type == 'vote_update':
-            # 投票更新
-            self._handle_vote_update(payload)
-        
-        elif event_type == 'player_death':
-            # 玩家死亡
-            user_id = payload.get('user_id')
-            if user_id in self.state.players:
-                self.state.players[user_id].is_alive = False
-        
-        elif event_type == 'game_over':
-            # 游戏结束
-            self.state.phase = GamePhase.GAME_OVER
-    
-    def _handle_phase_change(self, payload: Dict):
-        """处理阶段变化"""
-        phase_name = payload.get('phase')
-        self.state.phase = GamePhase[phase_name]
-        self.state.timer = self.PHASE_TIMERS.get(self.state.phase, 0)
-        
-        if self.state.phase == GamePhase.DAY_DISCUSS:
-            self.state.day_count += 1
-        
-        # 重置夜晚行动
-        if self.state.phase == GamePhase.NIGHT:
-            self.state.wolf_target = None
-            self.state.seer_target = None
-            self.state.witch_save = False
-            self.state.witch_poison = None
-            self.state.guard_target = None
-        
-        # 重置投票
-        if self.state.phase == GamePhase.DAY_VOTE:
-            self.state.votes.clear()
-        
-        if self.on_phase_change:
-            self.on_phase_change(self.state.phase)
-    
-    def _handle_night_result(self, payload: Dict):
-        """处理夜晚结果"""
-        # 预言家查验结果
-        if 'seer_result' in payload and self.my_role == Role.SEER:
-            # 显示查验结果
-            pass
-        
-        # 死亡玩家
-        for user_id in payload.get('deaths', []):
-            if user_id in self.state.players:
-                self.state.players[user_id].is_alive = False
-    
-    def _handle_vote_update(self, payload: Dict):
-        """处理投票更新"""
-        voter = payload.get('voter')
-        target = payload.get('target')
-        
-        if voter and target:
-            self.state.votes[voter] = target
-    
-    def update(self, dt: float):
-        """更新"""
-        # 更新计时器
-        if self.state.timer > 0:
-            self.state.timer -= dt
-    
-    def render(self, surface):
-        """渲染（由 UI 层处理）"""
-        return {
-            "phase": self.state.phase.name if self.state.phase else "UNKNOWN",
-            "day": self.state.day_count,
-            "players": {
-                uid: {
-                    "role": (p.role.value if p.role else None),
-                    "alive": p.is_alive,
-                    "protected": p.is_protected,
-                }
-                for uid, p in self.state.players.items()
-            },
-            "timer": self.state.timer,
-            "votes": self.state.votes,
-            "my_role": self.my_role.value if self.my_role else None,
-        }
-    
-    def dispose(self):
-        """释放资源"""
+        return True
+
+    def join_room(self, room_state: RoomState) -> bool:
+        self._room_state = room_state
+        for p in room_state.current_players:
+            self._players.setdefault(p.user_id, PlayerState(user_id=p.user_id, alive=True))
+        return True
+
+    def start_game(self) -> bool:
+        self._state = GameState.PLAYING
+        return True
+
+    def dispose(self) -> None:
+        self._players.clear()
+        self._phase = "waiting"
+        self._day = 0
+        self._timer = 0.0
+        self._my_role = None
+        self._seer_result = None
+        self._state = GameState.IDLE
         self._is_loaded = False
-        self.state = GameState()
-    
-    # ========== 游戏操作 ==========
-    
-    def send_wolf_action(self, target_id: str):
-        """狼人行动 - 选择击杀目标"""
-        if self.my_role != Role.WEREWOLF:
+
+    def update(self, dt: float) -> None:
+        return
+
+    def render(self, surface: Any) -> Dict[str, Any]:
+        return {
+            "phase": self._phase,
+            "day": self._day,
+            "timer": self._timer,
+            "my_role": self._my_role,
+            "seer_result": self._seer_result,
+            "players": {uid: {"alive": p.alive} for uid, p in self._players.items()},
+            "alive_players": [uid for uid, p in self._players.items() if p.alive],
+            "my_user_id": self._my_user_id,
+        }
+
+    def on_network(self, event: NetworkEvent) -> None:
+        if event.type == EventType.SYNC:
+            self._apply_state(event.payload or {})
             return
-        
-        self._send_action('wolf_kill', {'target': target_id})
-    
-    def send_seer_action(self, target_id: str):
-        """预言家行动 - 查验玩家"""
-        if self.my_role != Role.SEER:
+
+        if event.type == EventType.STATE:
+            payload = event.payload or {}
+            action = payload.get("action")
+            if action == "game_start":
+                self._apply_state(payload)
             return
-        
-        self._send_action('seer_check', {'target': target_id})
-    
-    def send_witch_save(self):
-        """女巫行动 - 救人"""
-        if self.my_role != Role.WITCH:
+
+        if event.type == EventType.SYSTEM:
+            payload = event.payload or {}
+            action = payload.get("action")
+            if action == "role":
+                role = payload.get("role")
+                self._my_role = str(role) if role else None
+            elif action == "seer_result":
+                self._seer_result = {
+                    "target": payload.get("target"),
+                    "is_wolf": bool(payload.get("is_wolf")),
+                }
             return
-        
-        self._send_action('witch_save', {})
-    
-    def send_witch_poison(self, target_id: str):
-        """女巫行动 - 毒杀"""
-        if self.my_role != Role.WITCH:
-            return
-        
-        self._send_action('witch_poison', {'target': target_id})
-    
-    def send_guard_protect(self, target_id: str):
-        """守卫行动 - 保护"""
-        if self.my_role != Role.GUARD:
-            return
-        
-        self._send_action('guard_protect', {'target': target_id})
-    
-    def send_vote(self, target_id: str):
-        """投票"""
-        self._send_action('vote', {'target': target_id})
-    
-    def _send_action(self, action: str, data: Dict):
-        """发送行动"""
-        # 通过网络发送
-        if self._network_callback:
-            self._network_callback({
-                'type': 'game_action',
-                'action': action,
-                'room_id': self._room_id,
-                **data
-            })
-    
-    # ========== 查询方法 ==========
-    
-    def get_alive_players(self) -> List[Player]:
-        """获取存活玩家"""
-        return [p for p in self.state.players.values() if p.is_alive]
-    
-    def get_vote_count(self) -> Dict[str, int]:
-        """获取投票统计"""
-        counts = {}
-        for target in self.state.votes.values():
-            counts[target] = counts.get(target, 0) + 1
-        return counts
-    
+
+    # ========== 发送操作 ==========
     def can_act(self) -> bool:
-        """当前是否可以行动"""
-        if not self.my_role:
+        if self._state != GameState.PLAYING:
             return False
-        
-        phase = self.state.phase
-        
-        if phase == GamePhase.NIGHT:
-            return self.my_role in [
-                Role.WEREWOLF, Role.SEER, Role.WITCH, Role.GUARD
-            ]
-        
-        if phase == GamePhase.DAY_VOTE:
+        if not self._my_role:
+            return False
+        if self._phase == "night":
+            return self._my_role in {"werewolf", "seer"}
+        if self._phase == "vote":
             return True
-        
         return False
+
+    def wolf_kill(self, target_id: str):
+        if self._my_role != "werewolf" or self._phase != "night":
+            return
+        self.send_input({"action": "wolf_kill", "target": target_id})
+
+    def seer_check(self, target_id: str):
+        if self._my_role != "seer" or self._phase != "night":
+            return
+        self.send_input({"action": "seer_check", "target": target_id})
+
+    def vote(self, target_id: str):
+        if self._phase != "vote":
+            return
+        self.send_input({"action": "vote", "target": target_id})
+
+    # ========== 内部 ==========
+    def _apply_state(self, state: Dict[str, Any]):
+        self._phase = str(state.get("phase") or self._phase)
+        self._day = int(state.get("day") or self._day)
+        timer = state.get("timer")
+        if timer is not None:
+            try:
+                self._timer = float(timer)
+            except Exception:
+                pass
+
+        players = state.get("players")
+        if isinstance(players, list):
+            for p in players:
+                if not isinstance(p, dict):
+                    continue
+                uid = p.get("user_id")
+                if not uid:
+                    continue
+                uid = str(uid)
+                alive = bool(p.get("alive", True))
+                self._players[uid] = PlayerState(user_id=uid, alive=alive)
 

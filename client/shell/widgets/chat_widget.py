@@ -40,25 +40,30 @@ class MessageBubble(QWidget):
         
         if self.is_self:
             # 自己的消息：蓝色背景，白色文字
-            bubble.setStyleSheet("""
-                QFrame {
-                    background-color: #2563EB;
-                    border-radius: 12px;
-                    border-top-right-radius: 4px;
-                }
-            """)
+            bubble.setStyleSheet(
+                f"""
+                QFrame {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                        stop:0 {t.primary}, stop:1 #4338CA);
+                    border-radius: 14px;
+                    border-top-right-radius: 6px;
+                }}
+                """
+            )
             text_color = "#FFFFFF"
             time_color = "rgba(255, 255, 255, 0.7)"
         else:
             # 对方的消息：白色背景，深色文字
-            bubble.setStyleSheet("""
-                QFrame {
-                    background-color: #FFFFFF;
-                    border: 1px solid #E5E7EB;
-                    border-radius: 12px;
-                    border-top-left-radius: 4px;
-                }
-            """)
+            bubble.setStyleSheet(
+                f"""
+                QFrame {{
+                    background-color: {t.bg_card};
+                    border: 1px solid {t.border_light};
+                    border-radius: 14px;
+                    border-top-left-radius: 6px;
+                }}
+                """
+            )
             text_color = "#111827"
             time_color = "#9CA3AF"
             
@@ -187,8 +192,8 @@ class ChatWidget(QWidget):
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll.setStyleSheet("""
             QScrollArea {
-                background: #F9FAFB;
-                border: 1px solid #E5E7EB;
+                background: #F8FAFC;
+                border: 1px solid #E2E8F0;
                 border-radius: 8px;
             }
         """)

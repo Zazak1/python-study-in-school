@@ -36,6 +36,13 @@ class RoomService:
         # 按创建时间排序
         rooms.sort(key=lambda x: x.get('room_id', ''), reverse=True)
         return rooms
+
+    def find_room_by_user(self, user_id: str) -> Optional[Room]:
+        """查找用户所在房间（用于断线重连恢复）。"""
+        for room in self._rooms.values():
+            if room.get_player(user_id):
+                return room
+        return None
     
     async def create_room(self, user_id: str, game_type: str, name: str, 
                          max_players: int = None, is_private: bool = False,
@@ -312,4 +319,3 @@ class RoomService:
             "type": "room_list",
             "rooms": rooms
         })
-

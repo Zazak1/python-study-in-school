@@ -164,6 +164,8 @@ class AuthService:
             "avatar": user.avatar,
             "coins": user.coins,
             "level": user.level,
+            "token": token,
+            "expires_in": config.jwt_expire_hours * 3600,
         }
     
     def get_user(self, user_id: str) -> Optional[User]:
@@ -184,4 +186,3 @@ class AuthService:
         self._passwords[username] = self._hash_password(password)
         
         return True, user_id
-

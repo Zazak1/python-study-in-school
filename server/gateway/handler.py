@@ -6,7 +6,6 @@ from typing import Dict, Any, Callable, Awaitable, Optional
 from datetime import datetime
 
 from .connection import Connection, ConnectionManager
-from ..models.game_event import EventType
 
 
 # 消息处理函数类型
@@ -40,12 +39,34 @@ class MessageHandler:
             except json.JSONDecodeError:
                 await connection.send_error(4000, "无效的 JSON 格式")
                 return
-            
+
+            if not isinstance(message, dict):
+                await connection.send_error(4000, "无效的消息格式")
+                return
+
+            # 兼容客户端 {type, payload:{...}} 结构：把 payload 合并到顶层，便于服务层按字段读取
+            payload = message.get("payload")
+            if isinstance(payload, dict):
+                for k, v in payload.items():
+                    # 不覆盖已有字段，避免歧义
+                    message.setdefault(k, v)
+
             # 获取消息类型
             event_type = message.get("type")
             if not event_type:
                 await connection.send_error(4001, "缺少消息类型")
                 return
+
+            # 简单 ACK：只要带 msg_id 就回 ACK（客户端可靠通道依赖）
+            msg_id = message.get("msg_id")
+            if msg_id and event_type != "ack":
+                await connection.send(
+                    {
+                        "type": "ack",
+                        "msg_id": msg_id,
+                        "timestamp": datetime.now().timestamp(),
+                    }
+                )
             
             # 检查认证（部分消息需要认证）
             if not self._is_public_event(event_type) and not connection.is_authenticated:
@@ -67,7 +88,7 @@ class MessageHandler:
     
     def _is_public_event(self, event_type: str) -> bool:
         """是否为公开事件（无需认证）"""
-        return event_type in ["heartbeat", "login"]
+        return event_type in ["heartbeat", "login", "token_login", "register"]
     
     # ========== 内置处理器 ==========
     
@@ -100,4 +121,3 @@ class ServiceRegistry:
     def clear(cls):
         """清空"""
         cls._services.clear()
-

@@ -412,10 +412,10 @@ class GomokuWidget(QWidget):
         footer = QHBoxLayout()
         
         # 悔棋
-        undo_btn = QPushButton("悔棋")
-        undo_btn.setCursor(Qt.PointingHandCursor)
-        undo_btn.setFixedSize(80, 36)
-        undo_btn.setStyleSheet(f"""
+        self.undo_btn = QPushButton("悔棋")
+        self.undo_btn.setCursor(Qt.PointingHandCursor)
+        self.undo_btn.setFixedSize(80, 36)
+        self.undo_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {t.bg_base};
                 color: {t.text_body};
@@ -426,13 +426,23 @@ class GomokuWidget(QWidget):
                 background: {t.bg_hover};
             }}
         """)
-        footer.addWidget(undo_btn)
+        self.undo_btn.clicked.connect(self._on_undo)
+
+        # 线上对局禁用悔棋（避免与服务器状态不一致）
+        try:
+            if self.plugin and self.plugin.context and self.plugin.context.send_network:
+                self.undo_btn.setEnabled(False)
+                self.undo_btn.setToolTip("线上对局不支持悔棋")
+        except Exception:
+            pass
+
+        footer.addWidget(self.undo_btn)
         
         # 认输
-        surrender_btn = QPushButton("认输")
-        surrender_btn.setCursor(Qt.PointingHandCursor)
-        surrender_btn.setFixedSize(80, 36)
-        surrender_btn.setStyleSheet(f"""
+        self.surrender_btn = QPushButton("认输")
+        self.surrender_btn.setCursor(Qt.PointingHandCursor)
+        self.surrender_btn.setFixedSize(80, 36)
+        self.surrender_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {t.bg_base};
                 color: {t.warning};
@@ -443,7 +453,8 @@ class GomokuWidget(QWidget):
                 background: {t.warning}15;
             }}
         """)
-        footer.addWidget(surrender_btn)
+        self.surrender_btn.clicked.connect(self._on_surrender)
+        footer.addWidget(self.surrender_btn)
         
         footer.addStretch()
         
@@ -529,3 +540,48 @@ class GomokuWidget(QWidget):
         
         self._update_turn_display()
 
+    # ========== 操作按钮 ==========
+    def _on_undo(self):
+        """悔棋按钮"""
+        if self.plugin:
+            if self.plugin.undo_last_move():
+                self._update_from_plugin()
+            return
+        
+        # 演示模式：本地移除最后一步
+        for r in range(self.board.BOARD_SIZE - 1, -1, -1):
+            for c in range(self.board.BOARD_SIZE - 1, -1, -1):
+                if self.board.board[r][c] != 0:
+                    self.board.board[r][c] = 0
+                    self.board.last_move = None
+                    self.current_player = 3 - self.current_player
+                    self._update_turn_display()
+                    self.board.update()
+                    return
+    
+    def _on_surrender(self):
+        """认输按钮"""
+        if self.plugin:
+            self.plugin.surrender()
+            # 线上对局：等待服务器结算
+            try:
+                if self.plugin.context and self.plugin.context.send_network:
+                    self.status_label.setText("已认输，等待结算...")
+                    self.board.setEnabled(False)
+                    if hasattr(self, "surrender_btn"):
+                        self.surrender_btn.setEnabled(False)
+                    return
+            except Exception:
+                pass
+
+            self._update_from_plugin()
+            return
+        
+        # 演示模式：直接判定另一方获胜
+        self.board.set_state(
+            self.current_player,
+            self.my_color,
+            self.board.last_move,
+            winner=3 - self.my_color
+        )
+        self.status_label.setText("你选择了认输")

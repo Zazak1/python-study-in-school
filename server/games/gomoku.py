@@ -52,6 +52,32 @@ class GomokuGame(GameLogic):
     
     def process_action(self, user_id: str, action: str, data: Dict[str, Any]) -> tuple:
         """处理落子"""
+        if action == "surrender":
+            if self.is_finished:
+                return False, {"error": "游戏已结束"}, None
+            if user_id not in self.player_colors:
+                return False, {"error": "无效玩家"}, None
+
+            winner_id: Optional[str] = None
+            for uid in self.player_colors:
+                if uid != user_id:
+                    winner_id = uid
+                    break
+
+            self.winner = winner_id
+            self.is_finished = True
+
+            return True, {"success": True}, {
+                "type": "game_action",
+                "action": "surrender",
+                "loser": user_id,
+                "winner": winner_id,
+                "winner_color": self.player_colors.get(winner_id) if winner_id else None,
+                "game_over": True,
+                "reason": "surrender",
+                "frame_id": len(self.history),
+            }
+
         if action != "move":
             return False, {"error": "未知操作"}, None
         
@@ -228,4 +254,3 @@ class GomokuGame(GameLogic):
             if 0 in row:
                 return False
         return True
-

@@ -27,6 +27,7 @@ class RacingGame(GameLogic):
         self.track: Dict[str, Any] = {}
         self.state: str = "waiting"  # waiting / countdown / racing / finished
         self.race_time: float = 0.0
+        self.countdown_time: float = 3.0
         self.countdown: int = 3
         self.total_laps: int = 3
 
@@ -34,7 +35,8 @@ class RacingGame(GameLogic):
         self._load_track()
         self._spawn_cars()
         self.state = "countdown"
-        self.countdown = 3
+        self.countdown_time = 3.0
+        self.countdown = int(math.ceil(self.countdown_time))
         self.race_time = 0.0
         self.is_finished = False
         self.winner = None
@@ -65,8 +67,9 @@ class RacingGame(GameLogic):
         if self.is_finished:
             return
         if self.state == "countdown":
-            self.countdown -= 1 if dt >= 1 else 0
-            if self.countdown <= 0:
+            self.countdown_time = max(0.0, self.countdown_time - dt)
+            self.countdown = int(math.ceil(self.countdown_time))
+            if self.countdown_time <= 0.0:
                 self.state = "racing"
             return
 
@@ -226,6 +229,7 @@ class RacingGame(GameLogic):
         return math.sqrt(dx * dx + dy * dy + dz * dz)
 
     def _serialize_cars(self):
+        rank_map = self._compute_provisional_ranks()
         return [
             {
                 "user_id": c["user_id"],
@@ -235,9 +239,47 @@ class RacingGame(GameLogic):
                 "rotation": c["rotation"],
                 "lap": c["lap"],
                 "checkpoint": c["checkpoint"],
-                "rank": c["rank"],
+                "rank": rank_map.get(c["user_id"], c["rank"]),
                 "finished": c["finished"],
             }
             for c in self.cars.values()
         ]
 
+    def _compute_provisional_ranks(self) -> Dict[str, int]:
+        """为未完赛车辆计算临时排名（不修改内部 rank 字段）。"""
+        cars = list(self.cars.values())
+        if not cars:
+            return {}
+
+        checkpoints = self.track.get("checkpoints") or []
+        total_cps = len(checkpoints) if isinstance(checkpoints, list) and checkpoints else 1
+
+        def progress(car: Dict[str, Any]) -> tuple:
+            lap = int(car.get("lap") or 0)
+            checkpoint = int(car.get("checkpoint") or 0)
+            cp_idx = checkpoint % total_cps
+            cp = checkpoints[cp_idx] if isinstance(checkpoints, list) and checkpoints else (0, 0, 0)
+            dist = self._distance(car.get("pos") or {"x": 0.0, "y": 0.0, "z": 0.0}, cp) if cp else 0.0
+            # lap/checkpoint 越大越靠前；距离下一检查点越近越靠前
+            return (lap * total_cps + checkpoint, -dist)
+
+        ranks: Dict[str, int] = {}
+        used_ranks = set()
+        for c in cars:
+            if c.get("finished") and c.get("rank"):
+                try:
+                    r = int(c["rank"])
+                except Exception:
+                    continue
+                ranks[str(c.get("user_id"))] = r
+                used_ranks.add(r)
+
+        available = [r for r in range(1, len(cars) + 1) if r not in used_ranks]
+        available.sort()
+
+        active = [c for c in cars if not c.get("finished")]
+        active.sort(key=progress, reverse=True)
+        for c, r in zip(active, available):
+            ranks[str(c.get("user_id"))] = r
+
+        return ranks
