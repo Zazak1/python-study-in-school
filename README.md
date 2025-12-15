@@ -107,6 +107,54 @@ python -m client.launcher.main
 
 - [技术规格说明](docs/TECHNICAL_SPEC.md) - 详细的架构与实现方案
 
+## 📦 打包发布
+
+### Windows EXE 文件（推荐）
+
+**方法 1: 使用 GitHub Actions（无需 Windows 电脑）**
+
+1. 推送代码到 GitHub
+2. 在 GitHub 仓库页面，点击 **Actions** 标签
+3. 选择 **构建 Windows 客户端** 工作流
+4. 点击 **Run workflow** 手动触发构建
+5. 构建完成后，在 **Artifacts** 中下载 `aether-party.exe`
+
+**方法 2: 在 Windows 系统上直接构建**
+
+```cmd
+# 双击运行或在命令行执行
+build-windows.bat
+```
+
+**方法 3: 手动运行 PyInstaller（Windows）**
+
+```cmd
+pyinstaller --name=aether-party --onefile --windowed --noconsole ^
+    --add-data="client\assets;client\assets" ^
+    client\launcher\main.py
+```
+
+### macOS 应用包
+
+```bash
+# 方法 1: 使用 Python 构建脚本
+python build.py
+
+# 方法 2: 使用 Shell 脚本
+./build.sh
+
+# 方法 3: 手动运行 PyInstaller
+pyinstaller --name=aether-party --onefile --windowed \
+    --add-data="client/assets:client/assets" \
+    client/launcher/main.py
+```
+
+**重要提示：**
+- 确保使用正确的路径格式：`client/launcher/main.py`（不是 `clientlaunchermain.py`）
+- macOS 会生成 `.app` 应用包，Windows 会生成 `.exe` 可执行文件
+- 构建产物位于 `dist/` 目录
+- **PyInstaller 不支持交叉编译**，无法在 macOS 上直接生成 Windows exe
+
 ## 🛣️ 路线图
 
 - [x] 项目初始化与架构设计

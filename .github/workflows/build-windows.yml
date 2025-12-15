@@ -1,0 +1,77 @@
+name: 构建 Windows 客户端
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'client/**'
+      - 'requirements.txt'
+      - 'pyproject.toml'
+      - '.github/workflows/build-windows.yml'
+  workflow_dispatch:  # 允许手动触发
+  release:
+    types: [created]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: 构建 Windows EXE
+      run: |
+        $assetsPath = "client\assets"
+        $separator = ";"
+        
+        pyinstaller `
+          --name=aether-party `
+          --onefile `
+          --windowed `
+          --noconsole `
+          --clean `
+          --noconfirm `
+          --add-data="$assetsPath$separatorclient\assets" `
+          --hidden-import=PySide6.QtCore `
+          --hidden-import=PySide6.QtWidgets `
+          --hidden-import=PySide6.QtGui `
+          --hidden-import=arcade `
+          --hidden-import=websockets `
+          --hidden-import=pydantic `
+          --hidden-import=client.plugins `
+          --hidden-import=client.plugins.gomoku `
+          --hidden-import=client.plugins.shooter2d `
+          --hidden-import=client.plugins.werewolf `
+          --hidden-import=client.plugins.monopoly `
+          --hidden-import=client.plugins.racing `
+          client\launcher\main.py
+          
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: aether-party-windows
+        path: dist/aether-party.exe
+        retention-days: 30
+        
+    - name: 创建 Release（如果是发布版本）
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/aether-party.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
