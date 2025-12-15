@@ -1,6 +1,7 @@
 """
 主窗口
 """
+import os
 import sys
 import asyncio
 import platform
@@ -119,7 +120,9 @@ class MainWindow(QMainWindow):
         def on_binary(data: bytes):
             self.network_binary.emit(data)
         
-        ws_url = "ws://0.0.0.0:8765/ws"
+        # 允许通过环境变量覆盖服务器地址，便于打包后分发给好友使用
+        # 例：AETHER_SERVER_URL=ws://124.221.69.88:8765/ws
+        ws_url = os.getenv("AETHER_SERVER_URL", "ws://124.221.69.88:8765/ws")
         self.ws_manager = WebSocketManager(
             url=ws_url,
             auth=self.auth,
@@ -176,7 +179,9 @@ class MainWindow(QMainWindow):
 
     def _send_login(self, username: str, password: str):
         if not self.ws_manager:
+            print("[MainWindow] 警告: ws_manager 未初始化")
             return
+        print(f"[MainWindow] 发送登录请求: username={username}")
         self.ws_manager.send(
             "login",
             {
@@ -195,9 +200,12 @@ class MainWindow(QMainWindow):
 
     def _send_register(self, username: str, password: str, nickname: str):
         if not self.ws_manager:
+            print("[MainWindow] 警告: ws_manager 未初始化")
             return
         if not username or not password:
+            print("[MainWindow] 警告: 用户名或密码为空")
             return
+        print(f"[MainWindow] 发送注册请求: username={username}, nickname={nickname}")
         self.ws_manager.send("register", {"username": username, "password": password, "nickname": nickname}, requires_ack=True)
 
     # ========== 登录相关 ==========
@@ -319,10 +327,13 @@ class MainWindow(QMainWindow):
             return
 
         if msg_type == "register_response":
+            print(f"[MainWindow] 收到注册响应: success={payload.get('success')}, payload={payload}")
             if payload.get("success"):
                 QMessageBox.information(self, "注册成功", "注册成功，请返回登录。")
             else:
-                QMessageBox.warning(self, "注册失败", str(payload.get("error") or "注册失败"))
+                error_msg = str(payload.get("error") or "注册失败")
+                print(f"[MainWindow] 注册失败: {error_msg}")
+                QMessageBox.warning(self, "注册失败", error_msg)
             return
 
         if msg_type == "friend_list":
@@ -455,13 +466,21 @@ class MainWindow(QMainWindow):
 
     def _handle_login_response(self, payload: dict[str, Any]):
         self.login_widget.set_loading(False)
+        
+        print(f"[MainWindow] 收到登录响应: success={payload.get('success')}, payload={payload}")
 
         if not payload.get("success"):
-            QMessageBox.warning(self, "登录失败", str(payload.get("error") or "用户名或密码错误"))
+            error_msg = str(payload.get("error") or "用户名或密码错误")
+            print(f"[MainWindow] 登录失败: {error_msg}")
+            QMessageBox.warning(self, "登录失败", error_msg)
             return
 
         # 写入会话
-        self.auth.login(payload)
+        login_success = self.auth.login(payload)
+        if not login_success:
+            print("[MainWindow] 警告: AuthManager.login() 返回 False")
+            QMessageBox.warning(self, "登录失败", "处理登录响应时出错")
+            return
 
         # 设置“自己”的 ID，用于聊天气泡判断
         if self.auth.session:
@@ -473,6 +492,7 @@ class MainWindow(QMainWindow):
         self.arena_widget.set_user(nickname=nickname, avatar=avatar, level=level)
 
         # 进入大厅
+        print("[MainWindow] 登录成功，切换到大厅")
         self.stack.setCurrentWidget(self.arena_widget)
 
     def _enter_room_from_server(self, room: dict[str, Any]):

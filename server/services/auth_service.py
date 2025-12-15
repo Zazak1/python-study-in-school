@@ -76,9 +76,15 @@ class AuthService:
         Returns:
             (success, response_data)
         """
+        print(f"[AuthService] 登录请求: username={username}, password_len={len(password) if password else 0}")
+        
         # 验证密码
         password_hash = self._hash_password(password)
+        stored_hash = self._passwords.get(username)
+        print(f"[AuthService] 密码验证: username存在={username in self._passwords}, hash匹配={stored_hash == password_hash if stored_hash else False}")
+        
         if username not in self._passwords or self._passwords[username] != password_hash:
+            print(f"[AuthService] 登录失败: 用户名或密码错误")
             return False, {"error": "用户名或密码错误"}
         
         # 获取用户
@@ -174,7 +180,10 @@ class AuthService:
     
     def register(self, username: str, password: str, nickname: str) -> Tuple[bool, str]:
         """注册新用户"""
+        print(f"[AuthService] 注册请求: username={username}, nickname={nickname}, password_len={len(password) if password else 0}")
+        
         if username in self._passwords:
+            print(f"[AuthService] 注册失败: 用户名已存在")
             return False, "用户名已存在"
         
         user_id = f"user_{username}"
@@ -185,4 +194,5 @@ class AuthService:
         )
         self._passwords[username] = self._hash_password(password)
         
+        print(f"[AuthService] 注册成功: user_id={user_id}")
         return True, user_id

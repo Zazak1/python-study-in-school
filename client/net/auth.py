@@ -69,6 +69,15 @@ class AuthManager:
             response_data: 服务器返回的登录响应
         """
         try:
+            # 调试：打印接收到的响应数据
+            print(f"[AuthManager] 收到登录响应: {response_data}")
+            
+            # 检查必需字段
+            if not response_data.get('user_id'):
+                print(f"[AuthManager] 警告: 响应中缺少 user_id")
+            if not response_data.get('token'):
+                print(f"[AuthManager] 警告: 响应中缺少 token")
+            
             self.session = UserSession(
                 user_id=response_data.get('user_id', ''),
                 username=response_data.get('username', ''),
@@ -80,9 +89,12 @@ class AuthManager:
                 coins=response_data.get('coins', 0),
                 level=response_data.get('level', 1)
             )
+            print(f"[AuthManager] 登录成功: user_id={self.session.user_id}, username={self.session.username}")
             return True
         except Exception as e:
             print(f"[AuthManager] 登录处理失败: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def logout(self):

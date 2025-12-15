@@ -114,11 +114,38 @@ class WebSocketClient:
             token_to_use = token or (self._token_provider() if self._token_provider else "")
             url = f"{self._url}?token={token_to_use}" if token_to_use else self._url
             
-            self._websocket = await websockets.connect(
-                url,
-                ping_interval=self._heartbeat_interval,
-                ping_timeout=10
-            )
+            # 尝试连接，忽略代理设置（如果环境变量设置了代理但不需要）
+            try:
+                self._websocket = await websockets.connect(
+                    url,
+                    ping_interval=self._heartbeat_interval,
+                    ping_timeout=10
+                )
+            except Exception as proxy_error:
+                # 如果是因为代理问题，尝试不使用代理
+                if "SOCKS" in str(proxy_error) or "proxy" in str(proxy_error).lower():
+                    logger.warning(f"代理连接失败，尝试直连: {proxy_error}")
+                    # 临时清除代理环境变量
+                    import os
+                    old_proxy = os.environ.pop("HTTP_PROXY", None)
+                    old_https_proxy = os.environ.pop("HTTPS_PROXY", None)
+                    old_all_proxy = os.environ.pop("ALL_PROXY", None)
+                    try:
+                        self._websocket = await websockets.connect(
+                            url,
+                            ping_interval=self._heartbeat_interval,
+                            ping_timeout=10
+                        )
+                    finally:
+                        # 恢复环境变量
+                        if old_proxy:
+                            os.environ["HTTP_PROXY"] = old_proxy
+                        if old_https_proxy:
+                            os.environ["HTTPS_PROXY"] = old_https_proxy
+                        if old_all_proxy:
+                            os.environ["ALL_PROXY"] = old_all_proxy
+                else:
+                    raise
             
             self._state = ConnectionState.CONNECTED
             self._reconnect_attempts = 0

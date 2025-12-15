@@ -67,8 +67,14 @@ class WebSocketServer:
         
         print("[WebSocketServer] 服务器已关闭")
     
-    async def _handle_connection(self, websocket: WebSocketServerProtocol):
+    async def _handle_connection(self, websocket: WebSocketServerProtocol, path: str = ""):
         """处理新连接"""
+        # 检查路径（支持 /ws 或根路径）
+        if path and path != "/ws" and path != "/":
+            print(f"[WebSocketServer] 拒绝连接: 无效路径 {path}")
+            await websocket.close(1008, "Invalid path")
+            return
+        
         # 检查连接数限制
         if self.conn_manager.connection_count >= config.max_connections:
             await websocket.close(1013, "服务器已满")
